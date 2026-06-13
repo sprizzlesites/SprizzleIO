@@ -81,39 +81,25 @@ export default function VideoBackground() {
       ctx.drawImage(video, sx, sy, sW, sH);
     };
 
-    // Track scroll velocity
+    // Track raw scroll position
     const onScroll = () => {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       maxScroll.current = docHeight;
-      const newPos = window.scrollY / Math.max(docHeight, 1);
-      const delta = newPos - rawScroll.current;
-      // Add scroll impulse to velocity (roll-forward inertia)
-      velocity.current += delta * 0.15;
-      rawScroll.current = newPos;
+      rawScroll.current = window.scrollY / Math.max(docHeight, 1);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
 
-    // Animation loop: roll-forward inertia + throttle + draw
+    // Animation loop: smooth lerp to target + throttle + draw
     const loop = () => {
       if (!running) return;
 
       const now = performance.now();
 
-      // Roll-forward inertia: velocity decays slowly, keeping the video coasting
-      velocity.current *= 0.97; // Slow decay for long, smooth glide
-      if (Math.abs(velocity.current) < 0.00002) {
-        velocity.current = 0;
-      }
-
-      // Apply velocity to smooth scroll position
-      smoothScroll.current += velocity.current;
-      // Clamp to valid range
-      smoothScroll.current = Math.max(0, Math.min(1, smoothScroll.current));
-
-      // If user scrolls past smooth position, catch up smoothly
-      const catchup = (rawScroll.current - smoothScroll.current) * 0.03;
-      smoothScroll.current += catchup;
+      // Simple lerp: smoothScroll always moves toward rawScroll
+      // No velocity, no oscillation, no bounce
+      const lerp = 0.08;
+      smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
 
       // Update video time (throttled)
       if (
