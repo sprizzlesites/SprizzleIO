@@ -1,32 +1,51 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import Hero from "@/components/Hero";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Portal from "./sections/Portal";
+import TheGrid from "./sections/TheGrid";
+import TheCanvas from "./sections/TheCanvas";
+import TheFortress from "./sections/TheFortress";
+import TheNexus from "./sections/TheNexus";
+import ScrollProgress from "./components/ScrollProgress";
+import ZoneTransition from "./components/ZoneTransition";
 
-const queryClient = new QueryClient();
+gsap.registerPlugin(ScrollTrigger);
 
-function Router() {
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      const sections = gsap.utils.toArray<HTMLElement>(".section");
+      sections.forEach((section, index) => {
+        const isLast = index === sections.length - 1;
+        ScrollTrigger.create({
+          trigger: section,
+          start: "top top",
+          end: isLast ? "bottom bottom" : "+=100%",
+          pin: true,
+          pinSpacing: true,
+          anticipatePin: 1,
+        });
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <Switch>
-      <Route path="/" component={Hero} />
-      <Route component={NotFound} />
-    </Switch>
+    <div ref={containerRef} className="relative">
+      <ScrollProgress />
+
+      <Portal className="section" />
+      <ZoneTransition label="The Grid" color="hsl(130,80%,55%)" />
+      <TheGrid className="section" />
+      <ZoneTransition label="The Canvas" color="hsl(32,100%,55%)" />
+      <TheCanvas className="section" />
+      <ZoneTransition label="The Fortress" color="hsl(0,80%,55%)" />
+      <TheFortress className="section" />
+      <ZoneTransition label="The Nexus" color="hsl(272,60%,55%)" />
+      <TheNexus className="section" />
+    </div>
   );
 }
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;
