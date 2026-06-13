@@ -1,39 +1,52 @@
-import { Canvas } from '@react-three/fiber';
-import { useGLTF, OrbitControls, Stage, Float } from '@react-three/drei';
-import { Suspense } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { useGLTF, Stage } from '@react-three/drei';
+import { Suspense, useRef, useEffect } from 'react';
+import * as THREE from 'three';
 import logoGlb from '@assets/SPRIZZLE_LOGO_1781324328167.glb';
 
-function LogoModel() {
+function ScrollRotatingModel() {
   const { scene } = useGLTF(logoGlb);
-  
+  const groupRef = useRef<THREE.Group>(null);
+  const velocityRef = useRef(0);
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      velocityRef.current += e.deltaY * 0.004;
+    };
+    window.addEventListener('wheel', handleWheel, { passive: true });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y += velocityRef.current;
+    velocityRef.current *= 0.90;
+    if (Math.abs(velocityRef.current) < 0.0001) velocityRef.current = 0;
+  });
+
   return (
-    <Float
-      speed={2} 
-      rotationIntensity={0.5} 
-      floatIntensity={1.5} 
-      floatingRange={[-0.2, 0.2]}
-    >
-      <primitive object={scene} scale={2} />
-    </Float>
+    <group ref={groupRef}>
+      <primitive object={scene} scale={2.2} />
+    </group>
   );
 }
 
 export default function SprizzleLogo() {
   return (
-    <div className="w-full h-full min-h-[400px] md:min-h-[500px]" data-testid="3d-logo-container">
-      <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+    <div
+      className="w-full h-full"
+      data-testid="3d-logo-container"
+      style={{ minHeight: '320px' }}
+    >
+      <Canvas
+        camera={{ position: [0, 0, 5], fov: 45 }}
+        gl={{ alpha: true }}
+        style={{ background: 'transparent' }}
+      >
         <Suspense fallback={null}>
-          <Stage environment="city" intensity={0.8} adjustCamera={false}>
-            <LogoModel />
+          <Stage environment="city" intensity={1} adjustCamera={false}>
+            <ScrollRotatingModel />
           </Stage>
-          <OrbitControls 
-            enableZoom={false} 
-            enablePan={false}
-            autoRotate 
-            autoRotateSpeed={3} 
-            maxPolarAngle={Math.PI / 1.5}
-            minPolarAngle={Math.PI / 3}
-          />
         </Suspense>
       </Canvas>
     </div>

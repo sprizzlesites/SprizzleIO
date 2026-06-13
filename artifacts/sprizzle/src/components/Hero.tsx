@@ -39,36 +39,57 @@ export default function Hero() {
         
         <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16">
           
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", duration: 1.5, bounce: 0.4 }}
             className="w-full lg:w-1/2 flex items-center justify-center relative"
           >
-            {/* Soft glow behind the logo */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/40 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute top-1/3 left-1/3 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/2 bg-accent/40 blur-[80px] rounded-full pointer-events-none" />
-            
-            {/* Decorative Orbs */}
-            <div className="absolute top-10 left-10 w-16 h-16 aero-orb opacity-80" style={{
-              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(350 75% 50%) 25%, hsl(350 80% 20%) 70%, hsl(350 90% 10%) 100%)',
-              boxShadow: '0 0 20px hsl(350 75% 50%), inset 0 0 10px rgba(255,255,255,0.6)',
-              animation: 'floatDrift 6s infinite ease-in-out'
-            }}></div>
-            <div className="absolute bottom-10 right-10 w-24 h-24 aero-orb opacity-90" style={{
-              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(225 70% 50%) 25%, hsl(225 80% 20%) 70%, hsl(225 90% 10%) 100%)',
-              boxShadow: '0 0 30px hsl(225 70% 50%), inset 0 0 15px rgba(255,255,255,0.6)',
-              animation: 'floatDrift 8s infinite ease-in-out 1s'
-            }}></div>
-            <div className="absolute bottom-1/4 left-0 w-12 h-12 aero-orb opacity-70" style={{
-              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(272 60% 50%) 25%, hsl(272 80% 20%) 70%, hsl(272 90% 10%) 100%)',
-              boxShadow: '0 0 15px hsl(272 60% 50%), inset 0 0 10px rgba(255,255,255,0.6)',
-              animation: 'floatDrift 5s infinite ease-in-out 2s'
-            }}></div>
+            {/* Small decorative orbs orbiting the big bubble */}
+            <div className="absolute top-8 right-12 w-14 h-14 rounded-full pointer-events-none" style={{
+              background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9) 0%, hsl(350 75% 55%) 22%, hsl(350 80% 22%) 68%, hsl(350 90% 10%) 100%)',
+              boxShadow: '0 0 18px hsl(350 75% 50%), inset 0 0 8px rgba(255,255,255,0.5)',
+              animation: 'floatDrift 6s infinite ease-in-out',
+            }} />
+            <div className="absolute bottom-8 left-8 w-10 h-10 rounded-full pointer-events-none" style={{
+              background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9) 0%, hsl(225 70% 55%) 22%, hsl(225 80% 22%) 68%, hsl(225 90% 10%) 100%)',
+              boxShadow: '0 0 14px hsl(225 70% 50%), inset 0 0 6px rgba(255,255,255,0.5)',
+              animation: 'floatDrift 7s infinite ease-in-out 1.5s',
+            }} />
+            <div className="absolute top-1/2 left-4 w-8 h-8 rounded-full pointer-events-none" style={{
+              background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9) 0%, hsl(272 60% 55%) 22%, hsl(272 80% 22%) 68%, hsl(272 90% 10%) 100%)',
+              boxShadow: '0 0 12px hsl(272 60% 50%), inset 0 0 6px rgba(255,255,255,0.5)',
+              animation: 'floatDrift 5s infinite ease-in-out 0.5s',
+            }} />
 
-            <WebGLErrorBoundary>
-              <SprizzleLogo />
-            </WebGLErrorBoundary>
+            {/* The big Aero bubble — logo lives inside */}
+            <div className="relative flex items-center justify-center" style={{ width: '360px', height: '360px' }}>
+              {/* Outer glow */}
+              <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                boxShadow: '0 0 80px 20px rgba(120, 60, 220, 0.45), 0 0 40px 8px rgba(60, 80, 220, 0.3)',
+              }} />
+              {/* Bubble shell */}
+              <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.18) 0%, rgba(100,50,200,0.25) 40%, rgba(30,20,120,0.55) 80%, rgba(10,5,60,0.7) 100%)',
+                border: '1.5px solid rgba(255,255,255,0.25)',
+                boxShadow: 'inset 0 0 40px rgba(255,255,255,0.08)',
+              }} />
+              {/* Glassy top-half shine */}
+              <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0,
+                  height: '48%',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.04) 100%)',
+                  borderRadius: '50% 50% 0 0 / 48% 48% 0 0',
+                }} />
+              </div>
+              {/* 3D logo canvas, transparent bg so bubble shows through */}
+              <div className="relative z-10 w-full h-full">
+                <WebGLErrorBoundary>
+                  <SprizzleLogo />
+                </WebGLErrorBoundary>
+              </div>
+            </div>
           </motion.div>
 
           <motion.div 

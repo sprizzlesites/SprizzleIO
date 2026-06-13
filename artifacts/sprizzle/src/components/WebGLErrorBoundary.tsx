@@ -28,30 +28,35 @@ export class WebGLErrorBoundary extends Component<Props, State> {
           data-testid="logo-fallback"
         >
           <div
-            className="aero-orb relative flex items-center justify-center"
+            className="relative"
             style={{
-              width: "240px",
-              height: "240px",
-              background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, hsl(272 60% 50%) 25%, hsl(225 70% 50%) 70%, hsl(272 90% 10%) 100%)",
-              boxShadow: "0 0 60px 10px rgba(147, 51, 234, 0.6), inset 0 0 30px rgba(255,255,255,0.6)",
-              border: "1px solid rgba(255,255,255,0.3)"
+              width: "300px",
+              height: "300px",
             }}
           >
-            {/* Glossy top overlay */}
-            <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
-            <span
-              style={{
-                fontFamily: "'Fredoka One', 'Fredoka', 'Nunito', sans-serif",
-                fontSize: "5rem",
-                fontWeight: "900",
-                color: "white",
-                letterSpacing: "-2px",
-                textShadow: "0 4px 10px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.5)",
-                zIndex: 10
-              }}
-            >
-              S
-            </span>
+            {/* Outer glow */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              boxShadow: "0 0 80px 20px rgba(120,60,220,0.5), 0 0 40px 8px rgba(60,80,220,0.35)",
+            }} />
+            {/* Bubble shell */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              background: "radial-gradient(circle at 32% 28%, rgba(255,255,255,0.18) 0%, rgba(100,50,200,0.28) 38%, rgba(30,20,120,0.6) 78%, rgba(10,5,60,0.75) 100%)",
+              border: "1.5px solid rgba(255,255,255,0.28)",
+              boxShadow: "inset 0 0 40px rgba(255,255,255,0.08)",
+            }} />
+            {/* Glassy top-half shine */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%", overflow: "hidden",
+              pointerEvents: "none",
+            }}>
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: "48%",
+                background: "linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.04) 100%)",
+                borderRadius: "50% 50% 0 0 / 48% 48% 0 0",
+              }} />
+            </div>
           </div>
         </div>
       );
