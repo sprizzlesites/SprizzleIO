@@ -51,87 +51,73 @@
 }
 
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  /* Sprizzle Frutiger Aero Palette */
+  --background: 272 80% 15%; /* Deep purple */
+  --foreground: 0 0% 100%; /* White text */
 
-  --opaque-button-border-intensity: -8;
+  --border: 272 60% 40%; 
 
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --card: 272 50% 20%; 
+  --card-foreground: 0 0% 100%; 
+  --card-border: 272 60% 50%; 
 
-  /* Sprizzle Color Palette */
-  --background: 45 100% 98%; /* Creamy white */
-  --foreground: 280 50% 15%; /* Deep purple text */
+  --popover: 272 50% 20%; 
+  --popover-foreground: 0 0% 100%; 
+  --popover-border: 272 60% 50%; 
 
-  --border: 330 100% 90%; 
-
-  --card: 0 0% 100%; 
-  --card-foreground: 280 50% 15%; 
-  --card-border: 330 100% 90%; 
-
-  --popover: 0 0% 100%; 
-  --popover-foreground: 280 50% 15%; 
-  --popover-border: 330 100% 90%; 
-
-  --primary: 330 85% 60%; /* Hot Pink */
+  --primary: 272 60% 50%; /* Royal Purple */
   --primary-foreground: 0 0% 100%; 
 
-  --secondary: 275 80% 65%; /* Bright Purple */
+  --secondary: 350 75% 50%; /* Crimson Red */
   --secondary-foreground: 0 0% 100%; 
 
-  --muted: 45 30% 90%; 
-  --muted-foreground: 280 20% 45%; 
+  --muted: 272 30% 25%; 
+  --muted-foreground: 272 20% 80%; 
 
-  --accent: 180 80% 45%; /* Vibrant Teal */
+  --accent: 225 70% 50%; /* Cobalt Blue */
   --accent-foreground: 0 0% 100%; 
 
   --destructive: 0 84.2% 60.2%; 
   --destructive-foreground: 0 0% 100%; 
 
-  --input: 330 50% 90%; 
-  --ring: 330 85% 60%; 
+  --input: 272 50% 30%; 
+  --ring: 272 60% 50%; 
   
-  --chart-1: 330 85% 60%;
-  --chart-2: 275 80% 65%;
-  --chart-3: 180 80% 45%;
-  --chart-4: 45 100% 50%;
-  --chart-5: 150 80% 50%;
-
   --app-font-sans: 'Fredoka', 'Inter', sans-serif;
-  --radius: 1.5rem; /* Very bubbly */
+  --radius: 1.5rem;
 }
 
 .dark {
-  --background: 280 50% 5%;
-  --foreground: 45 100% 98%;
+  --background: 272 80% 15%;
+  --foreground: 0 0% 100%;
 
-  --border: 280 50% 20%;
+  --border: 272 60% 40%;
 
-  --card: 280 50% 10%;
-  --card-foreground: 45 100% 98%;
-  --card-border: 280 50% 20%;
+  --card: 272 50% 20%;
+  --card-foreground: 0 0% 100%;
+  --card-border: 272 60% 50%;
 
-  --popover: 280 50% 10%;
-  --popover-foreground: 45 100% 98%;
-  --popover-border: 280 50% 20%;
+  --popover: 272 50% 20%;
+  --popover-foreground: 0 0% 100%;
+  --popover-border: 272 60% 50%;
 
-  --primary: 330 90% 65%;
+  --primary: 272 60% 50%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 275 85% 70%;
+  --secondary: 350 75% 50%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 280 30% 20%;
-  --muted-foreground: 280 20% 70%;
+  --muted: 272 30% 25%;
+  --muted-foreground: 272 20% 80%;
 
-  --accent: 180 85% 55%;
+  --accent: 225 70% 50%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 280 50% 20%;
-  --ring: 330 90% 65%;
+  --input: 272 50% 30%;
+  --ring: 272 60% 50%;
 }
 
 @layer base {
@@ -140,34 +126,107 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
+    background: linear-gradient(180deg, hsl(272 80% 15%) 0%, hsl(265 70% 25%) 50%, hsl(260 55% 40%) 100%);
+    background-attachment: fixed;
   }
 }
 
-/* Animations for bubbles */
+/* Frutiger Aero Classes */
+.btn-aero {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, hsl(350 75% 60%), hsl(350 75% 40%));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-top-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 16px -4px rgba(220, 20, 60, 0.6), inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.btn-aero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.05));
+  border-radius: 9999px 9999px 0 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.btn-aero:hover::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: rotate(45deg);
+  animation: shimmer 1s ease-in-out;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+.aero-orb {
+  border-radius: 50%;
+  /* Default coloring if no inline style */
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(272 60% 50%) 25%, hsl(272 80% 20%) 70%, hsl(272 90% 10%) 100%);
+  box-shadow: 0 0 20px hsl(272 60% 50%), inset 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes floatDrift {
+  0% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  66% {
+    transform: translateY(10px) translateX(-15px);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px);
+  }
+}
+
 @keyframes floatUp {
   0% {
-    transform: translateY(100vh) scale(0);
+    transform: translateY(100vh) scale(0) translateX(0px);
     opacity: 0;
   }
   10% {
     opacity: 0.8;
-    transform: translateY(80vh) scale(1);
+    transform: translateY(80vh) scale(1) translateX(20px);
   }
   90% {
     opacity: 0.8;
   }
   100% {
-    transform: translateY(-20vh) scale(1.5);
+    transform: translateY(-20vh) scale(1.5) translateX(-20px);
     opacity: 0;
   }
 }
 
-.bubble {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.4) 60%, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 0 10px rgba(255,255,255,0.3), inset 0 0 15px rgba(255,255,255,0.5);
-  animation: floatUp 10s infinite ease-in-out;
-  pointer-events: none;
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
 }

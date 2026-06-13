@@ -23,27 +23,31 @@ export class WebGLErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return this.props.fallback ?? (
         <div
-          className="w-full flex items-center justify-center"
+          className="w-full flex items-center justify-center relative"
           style={{ minHeight: "400px" }}
           data-testid="logo-fallback"
         >
           <div
-            className="relative flex items-center justify-center rounded-full"
+            className="aero-orb relative flex items-center justify-center"
             style={{
               width: "240px",
               height: "240px",
-              background: "radial-gradient(circle at 40% 35%, #ff66cc 0%, #cc33ff 50%, #6633ff 100%)",
-              boxShadow: "0 0 80px 20px rgba(204,51,255,0.4), 0 0 40px 8px rgba(255,102,204,0.3)",
+              background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, hsl(272 60% 50%) 25%, hsl(225 70% 50%) 70%, hsl(272 90% 10%) 100%)",
+              boxShadow: "0 0 60px 10px rgba(147, 51, 234, 0.6), inset 0 0 30px rgba(255,255,255,0.6)",
+              border: "1px solid rgba(255,255,255,0.3)"
             }}
           >
+            {/* Glossy top overlay */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
             <span
               style={{
-                fontFamily: "'Fredoka One', 'Nunito', sans-serif",
-                fontSize: "4rem",
+                fontFamily: "'Fredoka One', 'Fredoka', 'Nunito', sans-serif",
+                fontSize: "5rem",
                 fontWeight: "900",
                 color: "white",
                 letterSpacing: "-2px",
-                textShadow: "0 2px 12px rgba(0,0,0,0.2)",
+                textShadow: "0 4px 10px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.5)",
+                zIndex: 10
               }}
             >
               S

@@ -31,7 +31,7 @@ export default function Hero() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] w-full bg-background overflow-hidden flex flex-col font-sans">
+    <div className="relative min-h-[100dvh] w-full bg-transparent overflow-hidden flex flex-col font-sans">
       <BackgroundBubbles />
       <Navbar />
       
@@ -46,9 +46,26 @@ export default function Hero() {
             className="w-full lg:w-1/2 flex items-center justify-center relative"
           >
             {/* Soft glow behind the logo */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute top-1/3 left-1/3 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/2 bg-accent/20 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/40 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/3 left-1/3 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/2 bg-accent/40 blur-[80px] rounded-full pointer-events-none" />
             
+            {/* Decorative Orbs */}
+            <div className="absolute top-10 left-10 w-16 h-16 aero-orb opacity-80" style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(350 75% 50%) 25%, hsl(350 80% 20%) 70%, hsl(350 90% 10%) 100%)',
+              boxShadow: '0 0 20px hsl(350 75% 50%), inset 0 0 10px rgba(255,255,255,0.6)',
+              animation: 'floatDrift 6s infinite ease-in-out'
+            }}></div>
+            <div className="absolute bottom-10 right-10 w-24 h-24 aero-orb opacity-90" style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(225 70% 50%) 25%, hsl(225 80% 20%) 70%, hsl(225 90% 10%) 100%)',
+              boxShadow: '0 0 30px hsl(225 70% 50%), inset 0 0 15px rgba(255,255,255,0.6)',
+              animation: 'floatDrift 8s infinite ease-in-out 1s'
+            }}></div>
+            <div className="absolute bottom-1/4 left-0 w-12 h-12 aero-orb opacity-70" style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(272 60% 50%) 25%, hsl(272 80% 20%) 70%, hsl(272 90% 10%) 100%)',
+              boxShadow: '0 0 15px hsl(272 60% 50%), inset 0 0 10px rgba(255,255,255,0.6)',
+              animation: 'floatDrift 5s infinite ease-in-out 2s'
+            }}></div>
+
             <WebGLErrorBoundary>
               <SprizzleLogo />
             </WebGLErrorBoundary>
@@ -60,45 +77,48 @@ export default function Hero() {
             animate="visible"
             className="w-full lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left z-10"
           >
-            <motion.div variants={itemVariants} className="inline-block px-4 py-1.5 rounded-full bg-white/50 border border-primary/20 text-primary font-semibold text-sm mb-6 shadow-sm backdrop-blur-sm">
+            <motion.div variants={itemVariants} className="glass-card flex items-center px-4 py-1.5 rounded-full text-white font-semibold text-sm mb-6 overflow-hidden">
+              <span className="w-2 h-2 rounded-full bg-secondary mr-2 shadow-[0_0_8px_hsl(350,75%,50%)]"></span>
               Welcome to the party
             </motion.div>
             
             <motion.h1 
               variants={itemVariants}
-              className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground mb-6"
+              className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-6 relative"
+              style={{
+                textShadow: '0 4px 0 hsl(272 60% 30%), 0 8px 10px rgba(0,0,0,0.5), 0 0 40px rgba(147, 51, 234, 0.5)',
+                WebkitTextStroke: '2px hsl(272 60% 70%)'
+              }}
             >
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent">
-                Sprizzle
-              </span>
+              Sprizzle
             </motion.h1>
             
             <motion.p 
               variants={itemVariants}
-              className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-lg leading-relaxed"
+              className="text-xl md:text-2xl text-white/80 mb-10 max-w-lg leading-relaxed font-medium drop-shadow-md"
             >
               Where every moment pops. Bring joy, color, and a little extra bounce to everything you do.
             </motion.p>
             
             <motion.div 
               variants={itemVariants}
-              className="flex flex-col sm:flex-row items-center gap-4"
+              className="flex flex-col w-full sm:w-auto items-center"
             >
-              <Button 
-                size="lg" 
-                className="w-full sm:w-auto rounded-full bg-primary hover:bg-primary/90 text-white font-bold text-lg px-8 py-6 shadow-[0_8px_16px_-6px_rgba(255,51,153,0.5)] hover:shadow-[0_12px_20px_-8px_rgba(255,51,153,0.6)] hover:-translate-y-1 transition-all duration-300"
-                data-testid="button-get-started"
-              >
-                Get Started Now
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="w-full sm:w-auto rounded-full border-2 border-primary/20 bg-white/50 hover:bg-white hover:border-primary/40 text-foreground font-bold text-lg px-8 py-6 backdrop-blur-sm transition-all duration-300"
-                data-testid="button-learn-more"
-              >
-                Learn More
-              </Button>
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
+                <button 
+                  className="btn-aero w-full sm:w-auto px-8 py-4 text-xl font-bold transition-transform duration-300"
+                  data-testid="button-get-started"
+                >
+                  Get Started Now
+                </button>
+                <button 
+                  className="glass-card w-full sm:w-auto px-8 py-4 text-xl font-bold text-white hover:bg-white/20 transition-all duration-300"
+                  data-testid="button-learn-more"
+                >
+                  Learn More
+                </button>
+              </div>
+              <div className="mt-8 w-full h-[1px] bg-gradient-to-r from-transparent via-secondary to-accent opacity-70"></div>
             </motion.div>
           </motion.div>
           
