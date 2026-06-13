@@ -14,8 +14,10 @@ interface ZoneConfig {
   exit: number;
   gone: number;
   position: { top?: string; bottom?: string; left?: string; right?: string };
+  positionMobile?: { top?: string; bottom?: string; left?: string; right?: string };
   align: "left" | "center" | "right";
   maxWidth: string;
+  maxWidthMobile?: string;
   showLogo?: boolean;
   showCTA?: boolean;
 }
@@ -35,8 +37,10 @@ const zones: ZoneConfig[] = [
     exit: 12,
     gone: 18,
     position: { top: "14%", left: "50%" },
+    positionMobile: { top: "18%", left: "50%" },
     align: "center",
     maxWidth: "420px",
+    maxWidthMobile: "88vw",
     showLogo: true,
   },
   {
@@ -53,8 +57,10 @@ const zones: ZoneConfig[] = [
     exit: 35,
     gone: 40,
     position: { bottom: "12%", left: "50%" },
+    positionMobile: { bottom: "14%", left: "50%" },
     align: "center",
     maxWidth: "380px",
+    maxWidthMobile: "88vw",
   },
   {
     id: "canvas",
@@ -70,8 +76,10 @@ const zones: ZoneConfig[] = [
     exit: 55,
     gone: 60,
     position: { bottom: "12%", left: "50%" },
+    positionMobile: { bottom: "14%", left: "50%" },
     align: "center",
     maxWidth: "380px",
+    maxWidthMobile: "88vw",
   },
   {
     id: "fortress",
@@ -87,8 +95,10 @@ const zones: ZoneConfig[] = [
     exit: 75,
     gone: 80,
     position: { bottom: "12%", left: "50%" },
+    positionMobile: { bottom: "14%", left: "50%" },
     align: "center",
     maxWidth: "380px",
+    maxWidthMobile: "88vw",
   },
   {
     id: "nexus",
@@ -104,8 +114,10 @@ const zones: ZoneConfig[] = [
     exit: 92,
     gone: 98,
     position: { bottom: "12%", left: "50%" },
+    positionMobile: { bottom: "14%", left: "50%" },
     align: "center",
     maxWidth: "500px",
+    maxWidthMobile: "88vw",
     showCTA: true,
   },
 ];
@@ -141,18 +153,35 @@ function computeZoneState(pct: number, zone: ZoneConfig) {
 function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number }) {
   const { opacity, y, scale } = computeZoneState(scrollPct, zone);
   const isVisible = opacity > 0.01;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const isSmall = window.innerWidth < 768;
+      setIsMobile(isTouch || isSmall);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   if (!isVisible) return null;
+
+  const pos = isMobile && zone.positionMobile ? zone.positionMobile : zone.position;
+  const maxW = isMobile && zone.maxWidthMobile ? zone.maxWidthMobile : zone.maxWidth;
+  const padding = isMobile ? "18px 20px" : "28px 32px";
+  const logoSize = isMobile ? 90 : 140;
 
   return (
     <div
       className="fixed z-10"
       style={{
-        ...zone.position,
+        ...pos,
         transform: `translateX(-50%) translateY(${y}px) scale(${scale})`,
         opacity,
         transition: "opacity 0.05s linear, transform 0.05s linear",
-        maxWidth: zone.maxWidth,
+        maxWidth: maxW,
         width: "90vw",
       }}
     >
@@ -164,7 +193,7 @@ function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number })
           border: "1px solid rgba(255,255,255,0.12)",
           borderTop: "1px solid rgba(255,255,255,0.3)",
           boxShadow: `0 12px 40px -8px ${zone.glow}, inset 0 0 20px rgba(255,255,255,0.02)`,
-          padding: "28px 32px",
+          padding,
           textAlign: zone.align,
         }}
       >
@@ -192,7 +221,7 @@ function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number })
         {/* Title / Logo */}
         {zone.showLogo ? (
           <div className="flex justify-center mb-3" style={{ overflow: 'visible' }}>
-            <Logo3D size={140} scale={3.0} autoRotate={false} spinOnScroll={false} />
+            <Logo3D size={logoSize} scale={3.0} autoRotate={false} spinOnScroll={false} />
           </div>
         ) : (
           <h2
@@ -323,7 +352,7 @@ export default function TextOverlay() {
   }, []);
 
   return (
-    <div className="relative z-10" style={{ height: "5000px" }}>
+    <div className="relative z-10 mobile-scroll-container" style={{ height: "5000px" }}>
       {/* Zone panels */}
       {zones.map((zone) => (
         <ZonePanel key={zone.id} zone={zone} scrollPct={scrollPct} />

@@ -256,3 +256,50 @@ html {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
+/* Mobile optimizations */
+@media (max-width: 767px) {
+  .mobile-scroll-container {
+    /* Mobile scroll containers are more fluid */
+  }
+
+  /* Mobile navbar adjustments */
+  nav.fixed {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Mobile video background */
+  .mobile-video-bg {
+    /* object-fit is handled inline */
+  }
+
+  /* Mobile zone panels */
+  .mobile-zone-panel {
+    /* padding handled inline */
+  }
+
+  /* Mobile tag pills */
+  .mobile-zone-panel span {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  /* Mobile scroll hint */
+  .mobile-scroll-hint {
+    bottom: 12% !important;
+  }
+
+  /* Mobile footer */
+  .mobile-footer {
+    font-size: 10px;
+  }
+}
+
+/* Mobile touch optimizations */
+@media (pointer: coarse) {
+  .mobile-video-bg {
+    /* Ensure video stays visible on touch devices */
+    will-change: transform;
+  }
+}

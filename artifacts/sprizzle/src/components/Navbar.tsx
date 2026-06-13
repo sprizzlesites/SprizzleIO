@@ -57,13 +57,13 @@ export default function Navbar() {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring" as const, stiffness: 100, damping: 20, delay: 0.2 }}
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 md:px-12 bg-white/5 backdrop-blur-[20px] border-b border-white/20 border-t border-t-white/40 shadow-[0_4px_30px_rgba(147,51,234,0.3)]"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 md:px-12 md:py-3 bg-white/5 backdrop-blur-[20px] border-b border-white/20 border-t border-t-white/40 shadow-[0_4px_30px_rgba(147,51,234,0.3)]"
       data-testid="navbar"
     >
       {/* Logo */}
       <div className="flex items-center">
         {mounted && (
-          <Logo3D size={48} scale={2.2} autoRotate={false} spinOnScroll={true} />
+          <Logo3D size={44} scale={2.0} autoRotate={false} spinOnScroll={true} />
         )}
       </div>
 
