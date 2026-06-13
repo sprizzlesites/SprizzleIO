@@ -87,31 +87,33 @@ export default function VideoBackground() {
       maxScroll.current = docHeight;
       const newPos = window.scrollY / Math.max(docHeight, 1);
       const delta = newPos - rawScroll.current;
-      velocity.current += delta * 0.35; // impulse from scroll delta
+      // Add scroll impulse to velocity (roll-forward inertia)
+      velocity.current += delta * 0.15;
       rawScroll.current = newPos;
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
 
-    // Animation loop: physics + throttle + draw
+    // Animation loop: roll-forward inertia + throttle + draw
     const loop = () => {
       if (!running) return;
 
       const now = performance.now();
 
-      // Inertia physics: velocity decays with friction, glides to a stop
-      velocity.current *= 0.94; // Friction: higher = more glide, lower = snappier
-      if (Math.abs(velocity.current) < 0.00005) {
+      // Roll-forward inertia: velocity decays slowly, keeping the video coasting
+      velocity.current *= 0.97; // Slow decay for long, smooth glide
+      if (Math.abs(velocity.current) < 0.00002) {
         velocity.current = 0;
       }
 
-      // Spring: smoothScroll is pulled toward rawScroll by the spring force
-      const springForce = (rawScroll.current - smoothScroll.current) * 0.06;
-      velocity.current += springForce;
-
-      // Apply velocity
+      // Apply velocity to smooth scroll position
       smoothScroll.current += velocity.current;
+      // Clamp to valid range
       smoothScroll.current = Math.max(0, Math.min(1, smoothScroll.current));
+
+      // If user scrolls past smooth position, catch up smoothly
+      const catchup = (rawScroll.current - smoothScroll.current) * 0.03;
+      smoothScroll.current += catchup;
 
       // Update video time (throttled)
       if (
