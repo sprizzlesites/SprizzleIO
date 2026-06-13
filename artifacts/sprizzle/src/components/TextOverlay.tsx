@@ -1,302 +1,339 @@
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import SprizzleLogo from "./SprizzleLogo";
-import { WebGLErrorBoundary } from "./WebGLErrorBoundary";
+import { useEffect, useRef, useState } from "react";
 
-gsap.registerPlugin(ScrollTrigger);
-
-interface RoomProps {
-  children: React.ReactNode;
-  top?: string;
-  bottom?: string;
-  left?: string;
-  right?: string;
-  width?: string;
-  maxWidth?: string;
-  align?: "left" | "center" | "right";
-  startScroll?: number;
-  endScroll?: number;
-  glow?: string;
-  noGlass?: boolean;
+interface ZoneConfig {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  tags: string[];
+  glow: string;
+  color: string;
+  enter: number;
+  peak: number;
+  exit: number;
+  gone: number;
+  position: { top?: string; bottom?: string; left?: string; right?: string };
+  align: "left" | "center" | "right";
+  maxWidth: string;
+  showCTA?: boolean;
 }
 
-function Room({
-  children,
-  top,
-  bottom,
-  left,
-  right,
-  width,
-  maxWidth,
-  align = "left",
-  startScroll = 0,
-  endScroll = 1,
-  glow = "rgba(100,50,220,0.3)",
-  noGlass,
-}: RoomProps) {
-  const ref = useRef<HTMLDivElement>(null);
+const zones: ZoneConfig[] = [
+  {
+    id: "portal",
+    label: "Portal",
+    title: "Sprizzle",
+    description:
+      "Enter the Sprizzle Realm. A digital world shaped by three forces: Web, Design, and Security.",
+    tags: [],
+    glow: "rgba(100,50,220,0.3)",
+    color: "#cc55ff",
+    enter: -5,
+    peak: 0,
+    exit: 12,
+    gone: 18,
+    position: { top: "14%", left: "50%" },
+    align: "center",
+    maxWidth: "420px",
+  },
+  {
+    id: "grid",
+    label: "The Grid",
+    title: "The Grid",
+    description:
+      "Every line of code is a brick in the digital architecture. I build the structures that power the world wide web.",
+    tags: ["React", "TypeScript", "Node.js", "PostgreSQL", "APIs", "DevOps"],
+    glow: "rgba(68,255,136,0.25)",
+    color: "#44ff88",
+    enter: 18,
+    peak: 25,
+    exit: 35,
+    gone: 40,
+    position: { bottom: "12%", left: "50%" },
+    align: "center",
+    maxWidth: "380px",
+  },
+  {
+    id: "canvas",
+    label: "The Canvas",
+    title: "The Canvas",
+    description:
+      "Visual design is the language that speaks before words do. I craft the visual identity that makes brands unforgettable.",
+    tags: ["UI/UX", "Branding", "Motion", "3D", "Print", "Illustration"],
+    glow: "rgba(255,170,51,0.25)",
+    color: "#ffaa33",
+    enter: 38,
+    peak: 50,
+    exit: 55,
+    gone: 60,
+    position: { bottom: "12%", left: "50%" },
+    align: "center",
+    maxWidth: "380px",
+  },
+  {
+    id: "fortress",
+    label: "The Fortress",
+    title: "The Fortress",
+    description:
+      "In the digital frontier, security is the fortress that keeps the kingdom standing. I teach the art of digital defense.",
+    tags: ["Pen Testing", "Awareness", "Risk Assessment", "Compliance"],
+    glow: "rgba(255,51,51,0.25)",
+    color: "#ff3333",
+    enter: 58,
+    peak: 70,
+    exit: 75,
+    gone: 80,
+    position: { bottom: "12%", left: "50%" },
+    align: "center",
+    maxWidth: "380px",
+  },
+  {
+    id: "nexus",
+    label: "The Nexus",
+    title: "The Nexus",
+    description:
+      "Three forces. One creator. Web, Design, and Security converge here. Ready to build something that matters?",
+    tags: [],
+    glow: "rgba(170,85,255,0.25)",
+    color: "#cc55ff",
+    enter: 78,
+    peak: 85,
+    exit: 92,
+    gone: 98,
+    position: { bottom: "12%", left: "50%" },
+    align: "center",
+    maxWidth: "500px",
+    showCTA: true,
+  },
+];
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+function computeZoneState(pct: number, zone: ZoneConfig) {
+  let opacity = 0;
+  let y = 20;
+  let scale = 0.95;
 
-    const ctx = gsap.context(() => {
-      // Fade in
-      gsap.fromTo(
-        el,
-        { opacity: 0, y: 30, scale: 0.95 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          scrollTrigger: {
-            trigger: el,
-            start: `${startScroll}% center`,
-            end: `${startScroll + 5}% center`,
-            scrub: true,
-          },
-        }
-      );
-      // Fade out
-      gsap.to(el, {
-        opacity: 0,
-        y: -30,
-        scale: 0.95,
-        scrollTrigger: {
-          trigger: el,
-          start: `${endScroll - 5}% center`,
-          end: `${endScroll}% center`,
-          scrub: true,
-        },
-      });
-    }, el);
+  if (pct < zone.enter) {
+    opacity = 0;
+  } else if (pct < zone.peak) {
+    const t = (pct - zone.enter) / (zone.peak - zone.enter);
+    opacity = t;
+    y = 20 * (1 - t);
+    scale = 0.95 + 0.05 * t;
+  } else if (pct < zone.exit) {
+    opacity = 1;
+    y = 0;
+    scale = 1;
+  } else if (pct < zone.gone) {
+    const t = (pct - zone.exit) / (zone.gone - zone.exit);
+    opacity = 1 - t;
+    y = -20 * t;
+    scale = 1 - 0.05 * t;
+  } else {
+    opacity = 0;
+  }
 
-    return () => ctx.revert();
-  }, [startScroll, endScroll]);
+  return { opacity, y, scale };
+}
+
+function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number }) {
+  const { opacity, y, scale } = computeZoneState(scrollPct, zone);
+  const isVisible = opacity > 0.01;
+
+  if (!isVisible) return null;
 
   return (
     <div
-      ref={ref}
-      className="absolute z-10"
+      className="fixed z-10"
       style={{
-        top,
-        bottom,
-        left,
-        right,
-        width,
-        maxWidth,
-        textAlign: align,
+        ...zone.position,
+        transform: `translateX(-50%) translateY(${y}px) scale(${scale})`,
+        opacity,
+        transition: "opacity 0.05s linear, transform 0.05s linear",
+        maxWidth: zone.maxWidth,
+        width: "90vw",
       }}
     >
       <div
-        className={noGlass ? "" : "glass-panel"}
-        style={
-          noGlass
-            ? {}
-            : {
-                background: "rgba(10,5,30,0.65)",
-                backdropFilter: "blur(12px)",
-                borderRadius: "20px",
-                border: `1px solid rgba(255,255,255,0.15)`,
-                borderTop: "1px solid rgba(255,255,255,0.35)",
-                boxShadow: `0 12px 40px -8px ${glow}, inset 0 0 20px rgba(255,255,255,0.03)`,
-                padding: "28px 32px",
-                maxWidth: maxWidth || "420px",
-              }
-        }
+        style={{
+          background: "rgba(5,2,20,0.72)",
+          backdropFilter: "blur(16px)",
+          borderRadius: "20px",
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderTop: "1px solid rgba(255,255,255,0.3)",
+          boxShadow: `0 12px 40px -8px ${zone.glow}, inset 0 0 20px rgba(255,255,255,0.02)`,
+          padding: "28px 32px",
+          textAlign: zone.align,
+        }}
       >
-        {children}
+        {/* Zone label */}
+        <div
+          className="flex items-center gap-2 mb-3"
+          style={{
+            justifyContent:
+              zone.align === "center"
+                ? "center"
+                : zone.align === "right"
+                  ? "flex-end"
+                  : "flex-start",
+          }}
+        >
+          <div
+            className="w-2 h-2 rounded-full animate-pulse"
+            style={{ background: zone.color }}
+          />
+          <span className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase">
+            {zone.label}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h2
+          className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight"
+          style={{ textShadow: "0 4px 20px rgba(0,0,0,0.6)" }}
+        >
+          {zone.title}
+        </h2>
+
+        {/* Description */}
+        <p className="text-white/75 text-sm leading-relaxed mb-3">
+          {zone.description}
+        </p>
+
+        {/* Tags */}
+        {zone.tags.length > 0 && (
+          <div
+            className="flex flex-wrap gap-2"
+            style={{
+              justifyContent:
+                zone.align === "center"
+                  ? "center"
+                  : zone.align === "right"
+                    ? "flex-end"
+                    : "flex-start",
+            }}
+          >
+            {zone.tags.map((tag, i) => (
+              <span
+                key={i}
+                className="px-3 py-1 text-xs font-bold rounded-full text-white/80"
+                style={{
+                  background: `${zone.color}20`,
+                  border: `1px solid ${zone.color}40`,
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* CTA buttons for Nexus */}
+        {zone.showCTA && (
+          <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
+            <button
+              className="btn-aero px-6 py-3 text-sm font-bold"
+              style={{
+                background: "linear-gradient(180deg, hsl(272 60% 60%), hsl(272 60% 40%))",
+                boxShadow: "0 8px 16px -4px rgba(120,60,220,0.6), inset 0 -2px 6px rgba(0,0,0,0.2)",
+              }}
+              data-testid="button-start-project"
+            >
+              Start a Project
+            </button>
+            <button
+              className="glass-card px-6 py-3 text-sm font-bold text-white hover:bg-white/20 transition-all"
+              data-testid="button-contact"
+            >
+              Get in Touch
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScrollHint({ scrollPct }: { scrollPct: number }) {
+  const opacity = Math.max(0, 1 - scrollPct / 5);
+  if (opacity <= 0) return null;
+
+  return (
+    <div
+      className="fixed z-10"
+      style={{
+        bottom: "8%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        opacity,
+        transition: "opacity 0.3s ease",
+        textAlign: "center",
+      }}
+    >
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-xs font-bold text-white/50 tracking-[0.2em] uppercase">
+          Scroll to Explore
+        </span>
+        <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-1">
+          <div
+            className="w-1.5 h-3 rounded-full bg-white/60"
+            style={{
+              animation: "scrollBounce 1.5s ease-in-out infinite",
+            }}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
 export default function TextOverlay() {
+  const [scrollPct, setScrollPct] = useState(0);
+  const rafRef = useRef<number>(0);
+  const lastScrollRef = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      lastScrollRef.current = window.scrollY;
+    };
+
+    const loop = () => {
+      const scrollTop = lastScrollRef.current;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollPct(Math.min(pct, 100));
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    rafRef.current = requestAnimationFrame(loop);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   return (
     <div className="relative z-10" style={{ height: "5000px" }}>
-      {/* Room 0: Portal — Entry Chamber */}
-      <Room
-        top="10%"
-        right="5%"
-        maxWidth="420px"
-        align="left"
-        startScroll={0}
-        endScroll={18}
-        glow="rgba(100,50,220,0.3)"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full bg-[#ff4466] animate-pulse"></div>
-          <span className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase">Zone 00: Portal</span>
-        </div>
-        <h1 className="text-4xl md:text-5xl font-black text-white mb-3 leading-tight" style={{ textShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
-          Sprizzle
-        </h1>
-        <p className="text-white/70 text-base leading-relaxed mb-4">
-          Enter the Sprizzle Realm. A digital world shaped by three forces: Web, Design, and Security.
-        </p>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="relative" style={{ width: "80px", height: "80px" }}>
-            <WebGLErrorBoundary>
-              <div className="w-full h-full">
-                <SprizzleLogo />
-              </div>
-            </WebGLErrorBoundary>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button className="btn-aero px-5 py-2.5 text-sm font-bold" data-testid="button-enter-realm">Enter the Realm</button>
-        </div>
-      </Room>
+      {/* Zone panels */}
+      {zones.map((zone) => (
+        <ZonePanel key={zone.id} zone={zone} scrollPct={scrollPct} />
+      ))}
 
-      {/* Room 1: The Grid — Dev Chamber */}
-      <Room
-        bottom="12%"
-        left="5%"
-        maxWidth="380px"
-        align="left"
-        startScroll={20}
-        endScroll={38}
-        glow="rgba(68,255,136,0.25)"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full bg-[#44ff88] animate-pulse"></div>
-          <span className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase">Zone 01: The Grid</span>
-        </div>
-        <h2 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight" style={{ textShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
-          The Grid
-        </h2>
-        <p className="text-white/70 text-sm leading-relaxed mb-3">
-          Every line of code is a brick in the digital architecture. I build the structures that power the world wide web.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {["React", "TypeScript", "Node.js", "PostgreSQL", "APIs", "DevOps"].map((tag, i) => (
-            <span
-              key={i}
-              className="px-3 py-1 text-xs font-bold rounded-full text-white/80"
-              style={{ background: "rgba(68,255,136,0.12)", border: "1px solid rgba(68,255,136,0.25)" }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </Room>
+      {/* Scroll hint */}
+      <ScrollHint scrollPct={scrollPct} />
 
-      {/* Room 2: The Canvas — Art Chamber */}
-      <Room
-        top="8%"
-        left="8%"
-        maxWidth="380px"
-        align="left"
-        startScroll={40}
-        endScroll={58}
-        glow="rgba(255,170,51,0.25)"
+      {/* Footer */}
+      <div
+        className="fixed bottom-4 left-0 right-0 flex justify-center"
+        style={{
+          opacity: Math.min(1, Math.max(0, (scrollPct - 95) / 5)),
+          transition: "opacity 0.3s ease",
+        }}
       >
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full bg-[#ffaa33] animate-pulse"></div>
-          <span className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase">Zone 02: The Canvas</span>
-        </div>
-        <h2 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight" style={{ textShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
-          The Canvas
-        </h2>
-        <p className="text-white/70 text-sm leading-relaxed mb-3">
-          Visual design is the language that speaks before words do. I craft the visual identity that makes brands unforgettable.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {["UI/UX", "Branding", "Motion", "3D", "Print", "Illustration"].map((tag, i) => (
-            <span
-              key={i}
-              className="px-3 py-1 text-xs font-bold rounded-full text-white/80"
-              style={{ background: "rgba(255,170,51,0.12)", border: "1px solid rgba(255,170,51,0.25)" }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </Room>
-
-      {/* Room 3: The Fortress — Security Chamber */}
-      <Room
-        top="15%"
-        right="8%"
-        maxWidth="380px"
-        align="right"
-        startScroll={60}
-        endScroll={78}
-        glow="rgba(255,51,51,0.25)"
-      >
-        <div className="flex items-center justify-end gap-2 mb-3">
-          <span className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase">Zone 03: The Fortress</span>
-          <div className="w-2 h-2 rounded-full bg-[#ff3333] animate-pulse"></div>
-        </div>
-        <h2 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight" style={{ textShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
-          The Fortress
-        </h2>
-        <p className="text-white/70 text-sm leading-relaxed mb-3">
-          In the digital frontier, security is the fortress that keeps the kingdom standing. I teach the art of digital defense.
-        </p>
-        <div className="flex flex-wrap gap-2 justify-end">
-          {["Pen Testing", "Awareness", "Risk Assessment"].map((tag, i) => (
-            <span
-              key={i}
-              className="px-3 py-1 text-xs font-bold rounded-full text-white/80"
-              style={{ background: "rgba(255,51,51,0.12)", border: "1px solid rgba(255,51,51,0.25)" }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </Room>
-
-      {/* Room 4: The Nexus — Convergence Chamber */}
-      <Room
-        bottom="15%"
-        left="50%"
-        maxWidth="500px"
-        align="center"
-        startScroll={80}
-        endScroll={95}
-        glow="rgba(170,85,255,0.25)"
-        noGlass
-      >
-        <div className="glass-panel" style={{
-          background: "rgba(10,5,30,0.65)",
-          backdropFilter: "blur(12px)",
-          borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,0.15)",
-          borderTop: "1px solid rgba(255,255,255,0.35)",
-          boxShadow: "0 12px 40px -8px rgba(170,85,255,0.3), inset 0 0 20px rgba(255,255,255,0.03)",
-          padding: "32px 40px",
-        }}>
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-[#cc55ff] animate-pulse"></div>
-            <span className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase">The Nexus</span>
-            <div className="w-2 h-2 rounded-full bg-[#cc55ff] animate-pulse"></div>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight" style={{ textShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
-            The Nexus
-          </h2>
-          <p className="text-white/70 text-sm leading-relaxed mb-6">
-            Three forces. One creator. Web, Design, and Security converge here. Ready to build something that matters?
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <button className="btn-aero px-6 py-3 text-sm font-bold" style={{
-              background: "linear-gradient(180deg, hsl(272 60% 60%), hsl(272 60% 40%))",
-              boxShadow: "0 8px 16px -4px rgba(120,60,220,0.6), inset 0 -2px 6px rgba(0,0,0,0.2)",
-            }} data-testid="button-start-project">
-              Start a Project
-            </button>
-            <button className="glass-card px-6 py-3 text-sm font-bold text-white hover:bg-white/20 transition-all" data-testid="button-contact">
-              Get in Touch
-            </button>
-          </div>
-        </div>
-      </Room>
-
-      {/* Footer — always visible at bottom */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center">
         <div className="text-white/30 text-xs tracking-wider">
-          Sprizzle Realm — Web Developer &middot; Graphic Designer &middot; Security Educator
+          Sprizzle Realm — Web Developer &middot; Graphic Designer &middot; Security
+          Educator
         </div>
       </div>
     </div>

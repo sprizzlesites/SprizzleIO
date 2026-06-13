@@ -242,3 +242,17 @@
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
+
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(12px); opacity: 1; }
+}
+
+/* Hide scrollbar but keep scrolling */
+html::-webkit-scrollbar {
+  display: none;
+}
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
