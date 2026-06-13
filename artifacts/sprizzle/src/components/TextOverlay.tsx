@@ -191,8 +191,8 @@ function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number })
 
         {/* Title / Logo */}
         {zone.showLogo ? (
-          <div className="flex justify-center mb-3">
-            <Logo3D size={120} scale={3.0} autoRotate={true} />
+          <div className="flex justify-center mb-3" style={{ overflow: 'visible' }}>
+            <Logo3D size={140} scale={3.0} autoRotate={false} spinOnScroll={false} />
           </div>
         ) : (
           <h2

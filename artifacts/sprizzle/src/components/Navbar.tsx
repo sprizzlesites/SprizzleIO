@@ -1,7 +1,57 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Logo3D from './SprizzleLogo';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+interface SectionLink {
+  label: string;
+  pct: number;
+}
+
+const sections: SectionLink[] = [
+  { label: "Portal", pct: 0 },
+  { label: "The Grid", pct: 25 },
+  { label: "The Canvas", pct: 50 },
+  { label: "The Fortress", pct: 70 },
+  { label: "The Nexus", pct: 85 },
+];
+
+function smoothScrollToPct(pct: number) {
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const targetY = (pct / 100) * docHeight;
+  gsap.to(window, {
+    duration: 1.2,
+    scrollTo: { y: targetY },
+    ease: "power2.inOut",
+  });
+}
 
 export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Close menu on scroll
+  useEffect(() => {
+    const onScroll = () => {
+      if (menuOpen) setMenuOpen(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [menuOpen]);
+
+  const handleClick = (pct: number) => {
+    setMenuOpen(false);
+    smoothScrollToPct(pct);
+  };
+
   return (
     <motion.nav
       initial={{ y: -100, opacity: 0 }}
@@ -10,36 +60,81 @@ export default function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 md:px-12 bg-white/5 backdrop-blur-[20px] border-b border-white/20 border-t border-t-white/40 shadow-[0_4px_30px_rgba(147,51,234,0.3)]"
       data-testid="navbar"
     >
-      <div className="flex items-center gap-3">
-        <Logo3D size={48} scale={2.2} autoRotate={true} />
+      {/* Logo */}
+      <div className="flex items-center">
+        {mounted && (
+          <Logo3D size={48} scale={2.2} autoRotate={false} spinOnScroll={true} />
+        )}
       </div>
 
-      <div className="hidden md:flex items-center gap-8 font-medium">
-        <a href="#features" className="text-white/90 hover:text-white transition-all hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] relative group">
-          Features
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-secondary to-accent group-hover:w-full transition-all duration-300"></span>
-        </a>
-        <a href="#community" className="text-white/90 hover:text-white transition-all hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] relative group">
-          Community
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-secondary to-accent group-hover:w-full transition-all duration-300"></span>
-        </a>
-        <a href="#pricing" className="text-white/90 hover:text-white transition-all hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] relative group">
-          Pricing
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-secondary to-accent group-hover:w-full transition-all duration-300"></span>
-        </a>
-      </div>
-
-      <div>
+      {/* Hamburger */}
+      <div className="relative">
         <button
-          className="btn-aero px-6 py-2.5 rounded-full font-bold text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
-          style={{
-            background: 'linear-gradient(180deg, hsl(272 60% 60%), hsl(272 60% 40%))',
-            boxShadow: '0 8px 16px -4px rgba(147, 51, 234, 0.6), inset 0 -2px 6px rgba(0, 0, 0, 0.2)'
-          }}
-          data-testid="button-nav-login"
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="flex flex-col items-center justify-center gap-1.5 w-10 h-10 rounded-lg hover:bg-white/10 transition-colors"
+          aria-label="Menu"
         >
-          Log In
+          <span
+            className="block w-6 h-0.5 bg-white rounded-full transition-transform duration-300"
+            style={{
+              transform: menuOpen ? 'translateY(4px) rotate(45deg)' : 'none',
+            }}
+          />
+          <span
+            className="block w-6 h-0.5 bg-white rounded-full transition-opacity duration-300"
+            style={{ opacity: menuOpen ? 0 : 1 }}
+          />
+          <span
+            className="block w-6 h-0.5 bg-white rounded-full transition-transform duration-300"
+            style={{
+              transform: menuOpen ? 'translateY(-4px) rotate(-45deg)' : 'none',
+            }}
+          />
         </button>
+
+        {/* Dropdown */}
+        {menuOpen && (
+          <div
+            className="absolute right-0 top-12 z-50 min-w-[180px]"
+            style={{
+              background: 'rgba(5,2,20,0.85)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderTop: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 12px 40px -8px rgba(100,50,220,0.3)',
+              overflow: 'hidden',
+            }}
+          >
+            {sections.map((section, i) => (
+              <button
+                key={section.label}
+                onClick={() => handleClick(section.pct)}
+                className="w-full text-left px-5 py-3 text-sm font-bold text-white/80 hover:text-white hover:bg-white/10 transition-all flex items-center gap-3"
+                style={{
+                  borderBottom: i < sections.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                }}
+              >
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    background:
+                      i === 0
+                        ? '#cc55ff'
+                        : i === 1
+                          ? '#44ff88'
+                          : i === 2
+                            ? '#ffaa33'
+                            : i === 3
+                              ? '#ff3333'
+                              : '#cc55ff',
+                  }}
+                />
+                {section.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </motion.nav>
   );
