@@ -1,18 +1,19 @@
 import { useEffect, useRef } from "react";
+import { Route } from "wouter";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import VideoBackground from "./components/VideoBackground";
 import TextOverlay from "./components/TextOverlay";
 import Navbar from "./components/Navbar";
 import ScrollProgress from "./components/ScrollProgress";
+import IDEPage from "./pages/IDEPage";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function App() {
+function HomePage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Force a refresh of ScrollTrigger after all mounts
     const timer = setTimeout(() => {
       ScrollTrigger.refresh();
     }, 500);
@@ -26,5 +27,14 @@ export default function App() {
       <Navbar />
       <TextOverlay />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <Route path="/" component={HomePage} />
+      <Route path="/ide" component={IDEPage} />
+    </>
   );
 }

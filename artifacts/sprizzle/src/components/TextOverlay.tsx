@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
 import Logo3D from "./SprizzleLogo";
 
 interface ZoneConfig {
@@ -268,8 +269,9 @@ function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number })
         {/* CTA buttons for Nexus */}
         {zone.showCTA && (
           <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
-            <button
-              className="btn-aero px-6 py-3 text-sm font-bold"
+            <Link
+              href="/ide"
+              className="btn-aero px-6 py-3 text-sm font-bold inline-flex items-center justify-center"
               style={{
                 background: "linear-gradient(180deg, hsl(272 60% 60%), hsl(272 60% 40%))",
                 boxShadow: "0 8px 16px -4px rgba(120,60,220,0.6), inset 0 -2px 6px rgba(0,0,0,0.2)",
@@ -277,7 +279,7 @@ function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number })
               data-testid="button-start-project"
             >
               Start a Project
-            </button>
+            </Link>
             <button
               className="glass-card px-6 py-3 text-sm font-bold text-white hover:bg-white/20 transition-all"
               data-testid="button-contact"

@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NativeIDE</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-0: #0e0e10;
+    --bg-1: #141416;
+    --bg-2: #1a1a1e;
+    --bg-3: #222228;
+    --bg-4: #2a2a32;
+    --border: #2e2e38;
+    --border-active: #4a4a5e;
+    --text-0: #e8e8f0;
+    --text-1: #a0a0b8;
+    --text-2: #606078;
+    --accent: #6c7fff;
+    --accent-dim: #3a3f7a;
+    --green: #4ec9a0;
+    --red: #f47c7c;
+    --amber: #f5c842;
+    --pink: #c678dd;
+    --cyan: #56b6c2;
+    --sidebar-w: 220px;
+    --panel-h: 220px;
+    --ai-w: 320px;
+    --tab-h: 36px;
+    --header-h: 40px;
+    --status-h: 22px;
+  }
+  html, body { height: 100%; overflow: hidden; background: var(--bg-0); color: var(--text-0); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+  /* LAYOUT */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  #header { height: var(--header-h); background: var(--bg-1); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0; flex-shrink: 0; z-index: 10; }
+  #main { display: flex; flex: 1; overflow: hidden; }
+  #sidebar { width: var(--sidebar-w); background: var(--bg-1); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  #center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #tabs { height: var(--tab-h); background: var(--bg-1); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; flex-shrink: 0; }
+  #tabs::-webkit-scrollbar { height: 3px; }
+  #tabs::-webkit-scrollbar-thumb { background: var(--border-active); }
+  #editor-wrapper { flex: 1; position: relative; overflow: hidden; }
+  #bottom-panel { height: var(--panel-h); background: var(--bg-1); border-top: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  #ai-panel { width: var(--ai-w); background: var(--bg-1); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  #status-bar { height: var(--status-h); background: var(--accent-dim); display: flex; align-items: center; padding: 0 12px; gap: 16px; flex-shrink: 0; font-size: 11px; }
+
+  /* HEADER */
+  .logo { padding: 0 16px; font-weight: 700; font-size: 14px; color: var(--accent); letter-spacing: 0.5px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; gap: 6px; }
+  .menu-bar { display: flex; height: 100%; }
+  .menu-item { padding: 0 12px; height: 100%; display: flex; align-items: center; cursor: pointer; color: var(--text-1); position: relative; font-size: 12px; }
+  .menu-item:hover { background: var(--bg-3); color: var(--text-0); }
+  .menu-dropdown { display: none; position: absolute; top: 100%; left: 0; background: var(--bg-2); border: 1px solid var(--border); min-width: 180px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .menu-item:hover .menu-dropdown { display: block; }
+  .menu-dd-item { padding: 7px 16px; cursor: pointer; color: var(--text-1); display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .menu-dd-item:hover { background: var(--bg-3); color: var(--text-0); }
+  .menu-dd-sep { height: 1px; background: var(--border); margin: 4px 0; }
+  .menu-dd-shortcut { color: var(--text-2); font-size: 11px; }
+  .header-spacer { flex: 1; }
+  .header-btn { padding: 0 14px; height: 100%; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-1); border: none; background: none; font-size: 12px; }
+  .header-btn:hover { background: var(--bg-3); color: var(--text-0); }
+  .run-btn { background: var(--green) !important; color: #000 !important; font-weight: 600; border-radius: 4px; margin: 6px 8px; padding: 0 14px; height: 28px; }
+  .run-btn:hover { opacity: 0.85; }
+
+  /* SIDEBAR */
+  .sidebar-header { height: 36px; display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--border); gap: 6px; color: var(--text-2); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .sidebar-header span { flex: 1; }
+  .sidebar-icon-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-2); border-radius: 3px; }
+  .sidebar-icon-btn:hover { background: var(--bg-3); color: var(--text-0); }
+  #file-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+  #file-tree::-webkit-scrollbar { width: 4px; }
+  #file-tree::-webkit-scrollbar-thumb { background: var(--border); }
+  .tree-item { display: flex; align-items: center; gap: 5px; padding: 3px 8px 3px 0; cursor: pointer; color: var(--text-1); font-size: 12px; border-radius: 3px; user-select: none; position: relative; }
+  .tree-item:hover { background: var(--bg-3); }
+  .tree-item.active { background: var(--accent-dim); color: var(--text-0); }
+  .tree-item.folder { color: var(--amber); }
+  .tree-item-icon { width: 16px; flex-shrink: 0; text-align: center; font-size: 12px; }
+  .tree-indent { display: inline-block; }
+  .tree-item .ctx-btn { display: none; position: absolute; right: 4px; font-size: 10px; color: var(--text-2); }
+  .tree-item:hover .ctx-btn { display: flex; gap: 3px; }
+  .sidebar-section { border-top: 1px solid var(--border); }
+  .sidebar-section-header { height: 30px; display: flex; align-items: center; padding: 0 10px; cursor: pointer; color: var(--text-2); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .sidebar-section-header:hover { color: var(--text-1); }
+
+  /* TABS */
+  .tab { display: flex; align-items: center; gap: 7px; padding: 0 14px 0 14px; height: 100%; border-right: 1px solid var(--border); cursor: pointer; color: var(--text-2); font-size: 12px; white-space: nowrap; position: relative; flex-shrink: 0; min-width: 80px; }
+  .tab:hover { background: var(--bg-2); color: var(--text-1); }
+  .tab.active { background: var(--bg-0); color: var(--text-0); border-bottom: 2px solid var(--accent); }
+  .tab-close { margin-left: 4px; opacity: 0; font-size: 10px; border-radius: 3px; padding: 1px 3px; }
+  .tab:hover .tab-close, .tab.active .tab-close { opacity: 0.6; }
+  .tab-close:hover { opacity: 1 !important; background: var(--bg-4); }
+  .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  /* EDITOR */
+  #editor-wrapper { background: var(--bg-0); }
+  #editor { width: 100%; height: 100%; }
+  .welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-2); gap: 16px; }
+  .welcome-screen h2 { font-size: 28px; color: var(--accent); font-weight: 300; letter-spacing: 2px; }
+  .welcome-actions { display: flex; gap: 12px; }
+  .welcome-btn { padding: 8px 18px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-1); font-size: 12px; }
+  .welcome-btn:hover { border-color: var(--accent); color: var(--text-0); }
+
+  /* BOTTOM PANEL */
+  .panel-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+  .panel-tab { padding: 6px 14px; cursor: pointer; color: var(--text-2); font-size: 12px; border-bottom: 2px solid transparent; }
+  .panel-tab.active { color: var(--text-0); border-bottom-color: var(--accent); }
+  .panel-tab:hover { color: var(--text-1); }
+  .panel-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  #terminal { flex: 1; background: var(--bg-0); font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 12px; overflow-y: auto; padding: 8px 12px; color: var(--green); }
+  #terminal::-webkit-scrollbar { width: 4px; }
+  #terminal::-webkit-scrollbar-thumb { background: var(--border); }
+  .term-line { line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+  .term-line.err { color: var(--red); }
+  .term-line.warn { color: var(--amber); }
+  .term-line.info { color: var(--cyan); }
+  .term-input-row { display: flex; align-items: center; padding: 4px 12px; border-top: 1px solid var(--border); }
+  .term-prompt { color: var(--accent); font-family: monospace; font-size: 12px; margin-right: 6px; white-space: nowrap; }
+  #term-input { flex: 1; background: none; border: none; outline: none; color: var(--green); font-family: monospace; font-size: 12px; }
+  #problems-panel { flex: 1; overflow-y: auto; padding: 4px; }
+  .problem-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 8px; border-radius: 4px; margin-bottom: 2px; font-size: 12px; cursor: pointer; }
+  .problem-item:hover { background: var(--bg-3); }
+  .problem-icon { flex-shrink: 0; margin-top: 1px; }
+  .problem-icon.error { color: var(--red); }
+  .problem-icon.warning { color: var(--amber); }
+  .problem-location { color: var(--text-2); margin-left: auto; font-size: 11px; }
+
+  /* RESIZE HANDLES */
+  .resize-h { width: 4px; background: transparent; cursor: col-resize; flex-shrink: 0; }
+  .resize-h:hover, .resize-h.dragging { background: var(--accent); }
+  .resize-v { height: 4px; background: transparent; cursor: row-resize; flex-shrink: 0; }
+  .resize-v:hover, .resize-v.dragging { background: var(--accent); }
+
+  /* AI PANEL */
+  #ai-panel { background: var(--bg-1); }
+  .ai-header { height: 36px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+  .ai-header-title { font-size: 12px; font-weight: 600; color: var(--text-0); flex: 1; }
+  .ai-model-badge { font-size: 10px; padding: 2px 7px; background: var(--accent-dim); color: var(--accent); border-radius: 10px; cursor: pointer; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+  #ai-messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+  #ai-messages::-webkit-scrollbar { width: 4px; }
+  #ai-messages::-webkit-scrollbar-thumb { background: var(--border); }
+  .ai-msg { max-width: 100%; font-size: 12px; line-height: 1.6; }
+  .ai-msg.user { background: var(--accent-dim); border-radius: 8px 8px 2px 8px; padding: 8px 10px; color: var(--text-0); align-self: flex-end; max-width: 85%; }
+  .ai-msg.assistant { background: var(--bg-3); border-radius: 8px 8px 8px 2px; padding: 8px 10px; color: var(--text-0); align-self: flex-start; max-width: 95%; }
+  .ai-msg.assistant pre { background: var(--bg-0); border-radius: 4px; padding: 6px 8px; overflow-x: auto; margin: 6px 0; font-size: 11px; }
+  .ai-msg.system { color: var(--text-2); font-size: 11px; text-align: center; font-style: italic; }
+  .ai-input-area { border-top: 1px solid var(--border); padding: 8px; }
+  .ai-context-bar { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+  .ai-ctx-chip { font-size: 10px; padding: 2px 7px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; color: var(--text-1); }
+  .ai-ctx-chip.active { border-color: var(--accent); color: var(--accent); }
+  .ai-textarea-row { display: flex; gap: 6px; align-items: flex-end; }
+  #ai-input { flex: 1; background: var(--bg-0); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: var(--text-0); font-size: 12px; font-family: inherit; resize: none; outline: none; min-height: 38px; max-height: 120px; }
+  #ai-input:focus { border-color: var(--accent); }
+  #ai-send { background: var(--accent); border: none; border-radius: 6px; width: 34px; height: 34px; cursor: pointer; color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  #ai-send:hover { opacity: 0.85; }
+  #ai-send:disabled { opacity: 0.4; cursor: default; }
+  .ai-thinking { display: flex; gap: 4px; align-items: center; padding: 6px 0; }
+  .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite; }
+  .ai-dot:nth-child(2) { animation-delay: 0.2s; }
+  .ai-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* MODEL CONFIG MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; width: 440px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+  .modal-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .modal-close { cursor: pointer; color: var(--text-2); font-size: 18px; }
+  .modal-close:hover { color: var(--text-0); }
+  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; }
+  .form-input { background: var(--bg-0); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text-0); font-size: 13px; outline: none; }
+  .form-input:focus { border-color: var(--accent); }
+  .form-select { background: var(--bg-0); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text-0); font-size: 13px; outline: none; appearance: none; }
+  .form-hint { font-size: 11px; color: var(--text-2); }
+  .form-hint a { color: var(--accent); }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .btn { padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary { background: var(--bg-3); color: var(--text-1); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text-0); }
+  .model-preset { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-3); border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  .model-preset:hover, .model-preset.active { border-color: var(--accent); }
+  .model-preset-icon { font-size: 20px; width: 32px; text-align: center; }
+  .model-preset-info { flex: 1; }
+  .model-preset-name { font-size: 13px; font-weight: 500; }
+  .model-preset-desc { font-size: 11px; color: var(--text-2); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-dot.green { background: var(--green); }
+  .status-dot.red { background: var(--red); }
+  .status-dot.amber { background: var(--amber); }
+
+  /* STATUS BAR */
+  .status-item { display: flex; align-items: center; gap: 4px; color: rgba(255,255,255,0.7); }
+  .status-item i { font-size: 10px; }
+  .status-item.clickable { cursor: pointer; }
+  .status-item.clickable:hover { color: #fff; }
+
+  /* CONTEXT MENU */
+  .ctx-menu { position: fixed; background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px; min-width: 160px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 4px 0; }
+  .ctx-menu-item { padding: 6px 14px; cursor: pointer; color: var(--text-1); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .ctx-menu-item:hover { background: var(--bg-3); color: var(--text-0); }
+  .ctx-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* SCROLLBARS */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+
+  /* GUTTER / LINE NUMBERS (for fake editor) */
+  #code-display { display: flex; height: 100%; overflow: auto; }
+  .line-nums { background: var(--bg-1); color: var(--text-2); font-family: monospace; font-size: 13px; line-height: 20px; padding: 10px 14px 10px 10px; text-align: right; user-select: none; border-right: 1px solid var(--border); min-width: 50px; flex-shrink: 0; }
+  .code-content { flex: 1; padding: 10px 0; }
+  textarea#editor {
+    width: 100%; height: 100%;
+    background: var(--bg-0); color: var(--text-0);
+    font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+    font-size: 13px; line-height: 20px;
+    border: none; outline: none; resize: none;
+    padding: 10px 16px;
+    tab-size: 2;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+  }
+
+  /* SEARCH BAR */
+  #search-overlay { display: none; position: absolute; top: 8px; right: 16px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; display: flex; gap: 6px; align-items: center; z-index: 50; }
+  #search-overlay.show { display: flex; }
+  #search-input { background: var(--bg-0); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text-0); font-size: 12px; outline: none; width: 180px; }
+
+  .hidden { display: none !important; }
+
+  /* ACTIVITY BAR */
+  #activity-bar { width: 42px; background: var(--bg-1); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; flex-shrink: 0; }
+  .activity-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-2); border-radius: 6px; font-size: 16px; position: relative; }
+  .activity-btn:hover { background: var(--bg-3); color: var(--text-0); }
+  .activity-btn.active { color: var(--accent); background: var(--accent-dim); }
+  .activity-btn .tooltip { display: none; position: absolute; left: 44px; background: var(--bg-2); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; color: var(--text-0); z-index: 100; pointer-events: none; }
+  .activity-btn:hover .tooltip { display: block; }
+  .activity-spacer { flex: 1; }
+
+  /* GIT PANEL */
+  #git-panel { flex: 1; overflow-y: auto; padding: 8px; }
+  .git-change { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
+  .git-change:hover { background: var(--bg-3); }
+  .git-status { font-size: 11px; font-weight: 700; width: 14px; }
+  .git-status.M { color: var(--amber); }
+  .git-status.A { color: var(--green); }
+  .git-status.D { color: var(--red); }
+  .git-file { font-size: 12px; flex: 1; }
+  .git-commit-area { border-top: 1px solid var(--border); padding: 8px; }
+  #git-msg { width: 100%; background: var(--bg-0); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; color: var(--text-0); font-size: 12px; resize: none; outline: none; height: 60px; margin-bottom: 6px; }
+  .git-btn { width: 100%; padding: 6px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; }
+  .git-btn:hover { opacity: 0.85; }
+
+  /* SEARCH PANEL */
+  #search-panel { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  #search-panel input { background: var(--bg-0); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; color: var(--text-0); font-size: 12px; outline: none; width: 100%; }
+  #search-panel input:focus { border-color: var(--accent); }
+  #search-results { flex: 1; overflow-y: auto; }
+  .search-result-file { color: var(--text-2); font-size: 11px; padding: 4px 4px 2px; }
+  .search-result-line { display: flex; gap: 8px; padding: 2px 8px; cursor: pointer; border-radius: 3px; }
+  .search-result-line:hover { background: var(--bg-3); }
+  .search-result-num { color: var(--text-2); font-size: 11px; min-width: 28px; }
+  .search-result-text { font-size: 12px; }
+  mark { background: rgba(108,127,255,0.3); color: var(--accent); border-radius: 2px; }
+
+  .split-container { display: flex; flex: 1; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <div class="logo"><i class="fa-solid fa-code"></i> NativeIDE</div>
+    <div class="menu-bar">
+      <div class="menu-item">File
+        <div class="menu-dropdown">
+          <div class="menu-dd-item" onclick="newFile()"><span>New File</span><span class="menu-dd-shortcut">Ctrl+N</span></div>
+          <div class="menu-dd-item" onclick="newFolder()"><span>New Folder</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="openFileDialog()"><span>Open File</span><span class="menu-dd-shortcut">Ctrl+O</span></div>
+          <div class="menu-dd-item" onclick="openFolderDialog()"><span>Open Folder</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="saveFile()"><span>Save</span><span class="menu-dd-shortcut">Ctrl+S</span></div>
+          <div class="menu-dd-item" onclick="saveFileAs()"><span>Save As...</span><span class="menu-dd-shortcut">Ctrl+Shift+S</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="downloadProject()"><span>Download Project (.zip)</span></div>
+        </div>
+      </div>
+      <div class="menu-item">Edit
+        <div class="menu-dropdown">
+          <div class="menu-dd-item" onclick="editorCmd('undo')"><span>Undo</span><span class="menu-dd-shortcut">Ctrl+Z</span></div>
+          <div class="menu-dd-item" onclick="editorCmd('redo')"><span>Redo</span><span class="menu-dd-shortcut">Ctrl+Y</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="editorCmd('cut')"><span>Cut</span><span class="menu-dd-shortcut">Ctrl+X</span></div>
+          <div class="menu-dd-item" onclick="editorCmd('copy')"><span>Copy</span><span class="menu-dd-shortcut">Ctrl+C</span></div>
+          <div class="menu-dd-item" onclick="editorCmd('paste')"><span>Paste</span><span class="menu-dd-shortcut">Ctrl+V</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="toggleSearch()"><span>Find in File</span><span class="menu-dd-shortcut">Ctrl+F</span></div>
+        </div>
+      </div>
+      <div class="menu-item">View
+        <div class="menu-dropdown">
+          <div class="menu-dd-item" onclick="togglePanel('bottom')"><span>Toggle Terminal</span><span class="menu-dd-shortcut">Ctrl+`</span></div>
+          <div class="menu-dd-item" onclick="togglePanel('ai')"><span>Toggle AI Panel</span><span class="menu-dd-shortcut">Ctrl+Shift+A</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="changeFontSize(1)"><span>Increase Font Size</span><span class="menu-dd-shortcut">Ctrl++</span></div>
+          <div class="menu-dd-item" onclick="changeFontSize(-1)"><span>Decrease Font Size</span><span class="menu-dd-shortcut">Ctrl+-</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="toggleWordWrap()"><span>Toggle Word Wrap</span><span class="menu-dd-shortcut">Alt+Z</span></div>
+        </div>
+      </div>
+      <div class="menu-item">Run
+        <div class="menu-dropdown">
+          <div class="menu-dd-item" onclick="runCode()"><span>Run File</span><span class="menu-dd-shortcut">F5</span></div>
+          <div class="menu-dd-item" onclick="runInTerminal()"><span>Run in Terminal</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="termWrite('npm install\n', 'info')"><span>npm install</span></div>
+          <div class="menu-dd-item" onclick="termWrite('npm start\n', 'info')"><span>npm start</span></div>
+          <div class="menu-dd-item" onclick="termWrite('npm run build\n', 'info')"><span>npm build</span></div>
+          <div class="menu-dd-item" onclick="termWrite('python -m venv venv\n', 'info')"><span>Python: Create venv</span></div>
+        </div>
+      </div>
+      <div class="menu-item">AI
+        <div class="menu-dropdown">
+          <div class="menu-dd-item" onclick="openModelConfig()"><span>Configure AI Model</span></div>
+          <div class="menu-dd-item" onclick="testConnection()"><span>Test Connection</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="aiExplainCode()"><span>Explain Selection</span></div>
+          <div class="menu-dd-item" onclick="aiFixCode()"><span>Fix / Refactor Selection</span></div>
+          <div class="menu-dd-item" onclick="aiDocCode()"><span>Generate Docs</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="clearAIChat()"><span>Clear Chat</span></div>
+        </div>
+      </div>
+      <div class="menu-item">Git
+        <div class="menu-dropdown">
+          <div class="menu-dd-item" onclick="gitCmd('init')"><span>Git Init</span></div>
+          <div class="menu-dd-item" onclick="gitCmd('status')"><span>Git Status</span></div>
+          <div class="menu-dd-item" onclick="gitCmd('add')"><span>Stage All</span></div>
+          <div class="menu-dd-sep"></div>
+          <div class="menu-dd-item" onclick="gitCmd('pull')"><span>Git Pull</span></div>
+          <div class="menu-dd-item" onclick="gitCmd('push')"><span>Git Push</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="header-spacer"></div>
+    <button class="header-btn run-btn" onclick="runCode()"><i class="fa-solid fa-play"></i> Run</button>
+    <button class="header-btn" onclick="openModelConfig()"><i class="fa-solid fa-robot"></i> <span id="header-model-name" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No Model</span></button>
+    <button class="header-btn" onclick="togglePanel('ai')" title="AI Panel"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main" class="split-container">
+    <!-- ACTIVITY BAR -->
+    <div id="activity-bar">
+      <div class="activity-btn active" onclick="setActivity('files')" id="act-files">
+        <i class="fa-solid fa-folder-tree"></i>
+        <div class="tooltip">Explorer</div>
+      </div>
+      <div class="activity-btn" onclick="setActivity('search')" id="act-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <div class="tooltip">Search</div>
+      </div>
+      <div class="activity-btn" onclick="setActivity('git')" id="act-git">
+        <i class="fa-brands fa-git-alt"></i>
+        <div class="tooltip">Source Control</div>
+      </div>
+      <div class="activity-spacer"></div>
+      <div class="activity-btn" onclick="openModelConfig()" title="AI Settings">
+        <i class="fa-solid fa-robot"></i>
+        <div class="tooltip">AI Settings</div>
+      </div>
+      <div class="activity-btn" onclick="openSettings()">
+        <i class="fa-solid fa-gear"></i>
+        <div class="tooltip">Settings</div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+      <!-- FILES PANEL -->
+      <div id="files-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="sidebar-header">
+          <span id="sidebar-project-name">EXPLORER</span>
+          <div class="sidebar-icon-btn" onclick="newFile()" title="New File"><i class="fa-solid fa-file-circle-plus"></i></div>
+          <div class="sidebar-icon-btn" onclick="newFolder()" title="New Folder"><i class="fa-solid fa-folder-plus"></i></div>
+          <div class="sidebar-icon-btn" onclick="collapseAll()" title="Collapse All"><i class="fa-solid fa-compress"></i></div>
+        </div>
+        <div id="file-tree"></div>
+      </div>
+
+      <!-- SEARCH PANEL -->
+      <div id="search-panel-sidebar" class="hidden" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="sidebar-header"><span>SEARCH</span></div>
+        <div id="search-panel" style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;">
+          <input id="global-search" placeholder="Search files..." oninput="globalSearch(this.value)">
+          <div id="search-results" style="flex:1;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- GIT PANEL -->
+      <div id="git-panel-sidebar" class="hidden" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="sidebar-header"><span>SOURCE CONTROL</span></div>
+        <div id="git-panel">
+          <div style="color:var(--text-2);font-size:12px;padding:8px;">Changes</div>
+          <div id="git-changes"></div>
+          <div class="git-commit-area">
+            <textarea id="git-msg" placeholder="Commit message..."></textarea>
+            <button class="git-btn" onclick="gitCommit()">Commit & Push</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resize-h" id="resize-sidebar"></div>
+
+    <!-- CENTER -->
+    <div id="center">
+      <div id="editor-area">
+        <div id="tabs">
+          <div id="new-tab-btn" style="display:flex;align-items:center;padding:0 10px;cursor:pointer;color:var(--text-2);font-size:16px;" onclick="newFile()" title="New File">+</div>
+        </div>
+        <div id="editor-wrapper" style="position:relative;flex:1;overflow:hidden;">
+          <div id="welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;color:var(--text-2);">
+            <div style="font-size:48px;color:var(--accent);opacity:0.3;"><i class="fa-solid fa-code"></i></div>
+            <div style="font-size:22px;color:var(--text-1);font-weight:300;letter-spacing:2px;">NativeIDE</div>
+            <div style="font-size:12px;text-align:center;line-height:2;">
+              <span style="color:var(--text-2);">Ctrl+N</span> New File &nbsp;·&nbsp; <span style="color:var(--text-2);">Ctrl+O</span> Open &nbsp;·&nbsp; <span style="color:var(--text-2);">Ctrl+Shift+A</span> AI Panel
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+              <button class="welcome-btn" onclick="loadSampleProject()"><i class="fa-solid fa-box-open"></i> Load Sample Project</button>
+              <button class="welcome-btn" onclick="newFile()"><i class="fa-solid fa-file-circle-plus"></i> New File</button>
+              <button class="welcome-btn" onclick="openModelConfig()"><i class="fa-solid fa-robot"></i> Setup AI Model</button>
+            </div>
+          </div>
+          <textarea id="editor" class="hidden" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+          <div id="search-overlay" style="display:none;position:absolute;top:8px;right:16px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;gap:6px;align-items:center;z-index:50;">
+            <input id="search-input" placeholder="Find..." style="background:var(--bg-0);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-0);font-size:12px;outline:none;width:180px;">
+            <span id="search-count" style="font-size:11px;color:var(--text-2);min-width:40px;"></span>
+            <span onclick="closeSearch()" style="cursor:pointer;color:var(--text-2);padding:2px 4px;">✕</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="resize-v" id="resize-bottom"></div>
+
+      <!-- BOTTOM PANEL -->
+      <div id="bottom-panel">
+        <div class="panel-tabs">
+          <div class="panel-tab active" onclick="switchPanelTab('terminal', this)">Terminal</div>
+          <div class="panel-tab" onclick="switchPanelTab('problems', this)">Problems <span id="problem-count" style="background:var(--red);color:#fff;border-radius:10px;padding:0 5px;font-size:10px;margin-left:4px;display:none"></span></div>
+          <div class="panel-tab" onclick="switchPanelTab('output', this)">Output</div>
+          <div style="flex:1"></div>
+          <div style="display:flex;align-items:center;padding:0 8px;gap:6px;">
+            <span style="cursor:pointer;color:var(--text-2);font-size:12px;" onclick="clearTerminal()" title="Clear">⊘</span>
+            <span style="cursor:pointer;color:var(--text-2);font-size:12px;" onclick="togglePanel('bottom')" title="Close">✕</span>
+          </div>
+        </div>
+        <div class="panel-content">
+          <div id="panel-terminal" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            <div id="terminal"></div>
+            <div class="term-input-row">
+              <span class="term-prompt" id="term-prompt">~/project $</span>
+              <input id="term-input" placeholder="Enter command..." autocomplete="off" onkeydown="handleTermInput(event)">
+            </div>
+          </div>
+          <div id="panel-problems" class="hidden" style="flex:1;overflow:hidden;">
+            <div id="problems-panel"></div>
+          </div>
+          <div id="panel-output" class="hidden" style="flex:1;overflow-y:auto;padding:8px;font-family:monospace;font-size:12px;color:var(--text-1);" id="output-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resize-h" id="resize-ai"></div>
+
+    <!-- AI PANEL -->
+    <div id="ai-panel">
+      <div class="ai-header">
+        <i class="fa-solid fa-robot" style="color:var(--accent);"></i>
+        <span class="ai-header-title">AI Assistant</span>
+        <span class="ai-model-badge" id="ai-model-badge" onclick="openModelConfig()">No model</span>
+        <span style="cursor:pointer;color:var(--text-2);margin-left:4px;" onclick="clearAIChat()" title="Clear chat">⟳</span>
+      </div>
+      <div id="ai-messages">
+        <div class="ai-msg system">Configure an AI model to get started. Click the badge above or go to AI → Configure AI Model.</div>
+      </div>
+      <div class="ai-input-area">
+        <div class="ai-context-bar">
+          <span class="ai-ctx-chip active" id="ctx-file" onclick="toggleCtx('file')">📄 Current file</span>
+          <span class="ai-ctx-chip" id="ctx-selection" onclick="toggleCtx('selection')">✂️ Selection</span>
+          <span class="ai-ctx-chip" id="ctx-errors" onclick="toggleCtx('errors')">🐛 Errors</span>
+        </div>
+        <div class="ai-textarea-row">
+          <textarea id="ai-input" placeholder="Ask anything about your code..." rows="1" onkeydown="handleAIInput(event)" oninput="autoResizeTextarea(this)"></textarea>
+          <button id="ai-send" onclick="sendAIMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="status-bar">
+    <div class="status-item">
+      <div class="status-dot" id="ai-status-dot" style="background:var(--red)"></div>
+      <span id="ai-status-text">AI: Disconnected</span>
+    </div>
+    <div class="status-item">
+      <i class="fa-solid fa-code-branch"></i>
+      <span id="git-branch">main</span>
+    </div>
+    <div class="status-item clickable" onclick="togglePanel('bottom')">
+      <i class="fa-solid fa-terminal"></i>
+      <span>Terminal</span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="status-item" id="cursor-pos">Ln 1, Col 1</div>
+    <div class="status-item" id="file-encoding">UTF-8</div>
+    <div class="status-item" id="file-lang">Plain Text</div>
+    <div class="status-item" id="indent-type" onclick="toggleIndent()" style="cursor:pointer">Spaces: 2</div>
+  </div>
+</div>
+
+<!-- MODEL CONFIG MODAL -->
+<div class="modal-overlay hidden" id="model-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-robot" style="color:var(--accent);margin-right:8px;"></i>Configure AI Model</span>
+      <span class="modal-close" onclick="closeModal('model-modal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">Choose a backend and model. NativeIDE connects to locally-hosted models for fully unlimited, private AI assistance.</div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;" id="model-presets">
+        <div class="model-preset active" onclick="selectPreset('ollama')" id="preset-ollama">
+          <div class="model-preset-icon">🦙</div>
+          <div class="model-preset-info">
+            <div class="model-preset-name">Ollama (local)</div>
+            <div class="model-preset-desc">Run Qwen2.5-Coder, DeepSeek, CodeLlama & more locally</div>
+          </div>
+          <div class="status-dot" id="ollama-dot" style="background:var(--text-2)"></div>
+        </div>
+        <div class="model-preset" onclick="selectPreset('lmstudio')" id="preset-lmstudio">
+          <div class="model-preset-icon">🏠</div>
+          <div class="model-preset-info">
+            <div class="model-preset-name">LM Studio</div>
+            <div class="model-preset-desc">Local model server compatible with OpenAI API</div>
+          </div>
+          <div class="status-dot" id="lmstudio-dot" style="background:var(--text-2)"></div>
+        </div>
+        <div class="model-preset" onclick="selectPreset('openai')" id="preset-openai">
+          <div class="model-preset-icon">🤖</div>
+          <div class="model-preset-info">
+            <div class="model-preset-name">OpenAI-Compatible API</div>
+            <div class="model-preset-desc">GPT-4, custom servers, or any OpenAI-compatible endpoint</div>
+          </div>
+        </div>
+        <div class="model-preset" onclick="selectPreset('anthropic')" id="preset-anthropic">
+          <div class="model-preset-icon">🔮</div>
+          <div class="model-preset-info">
+            <div class="model-preset-name">Anthropic Claude</div>
+            <div class="model-preset-desc">Claude 3.5 Sonnet, Haiku via Anthropic API</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="config-ollama">
+        <div class="form-group">
+          <div class="form-label">Ollama Base URL</div>
+          <input class="form-input" id="cfg-ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Model Name</div>
+          <input class="form-input" id="cfg-ollama-model" value="qwen2.5-coder:7b" placeholder="qwen2.5-coder:7b">
+          <div class="form-hint">
+            Popular coding models: <code style="color:var(--accent)">qwen2.5-coder:7b</code>, <code style="color:var(--accent)">qwen2.5-coder:32b</code>, <code style="color:var(--accent)">deepseek-coder-v2</code>, <code style="color:var(--accent)">codellama:13b</code>
+            <br>Install with: <code style="color:var(--amber)">ollama pull qwen2.5-coder:7b</code>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-secondary" onclick="testOllamaConnection()"><i class="fa-solid fa-plug"></i> Test Connection</button>
+          <button class="btn btn-secondary" onclick="fetchOllamaModels()"><i class="fa-solid fa-list"></i> List Models</button>
+          <span id="ollama-test-result" style="font-size:12px;"></span>
+        </div>
+        <div id="ollama-models-list" style="display:none;margin-top:8px;background:var(--bg-0);border:1px solid var(--border);border-radius:6px;padding:8px;max-height:120px;overflow-y:auto;"></div>
+      </div>
+
+      <div id="config-lmstudio" class="hidden">
+        <div class="form-group">
+          <div class="form-label">LM Studio URL</div>
+          <input class="form-input" id="cfg-lmstudio-url" value="http://localhost:1234/v1" placeholder="http://localhost:1234/v1">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Model Name</div>
+          <input class="form-input" id="cfg-lmstudio-model" placeholder="e.g. qwen2.5-coder-7b-instruct">
+          <div class="form-hint">Enter the model identifier shown in LM Studio</div>
+        </div>
+        <button class="btn btn-secondary" onclick="testLMStudioConnection()">Test Connection</button>
+        <span id="lmstudio-test-result" style="font-size:12px;margin-left:8px;"></span>
+      </div>
+
+      <div id="config-openai" class="hidden">
+        <div class="form-group">
+          <div class="form-label">API Base URL</div>
+          <input class="form-input" id="cfg-openai-url" value="https://api.openai.com/v1" placeholder="https://api.openai.com/v1">
+        </div>
+        <div class="form-group">
+          <div class="form-label">API Key</div>
+          <input class="form-input" id="cfg-openai-key" type="password" placeholder="sk-...">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Model</div>
+          <input class="form-input" id="cfg-openai-model" value="gpt-4o" placeholder="gpt-4o">
+        </div>
+      </div>
+
+      <div id="config-anthropic" class="hidden">
+        <div class="form-group">
+          <div class="form-label">API Key</div>
+          <input class="form-input" id="cfg-anthropic-key" type="password" placeholder="sk-ant-...">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Model</div>
+          <select class="form-select" id="cfg-anthropic-model">
+            <option value="claude-sonnet-4-6">claude-sonnet-4-6 (recommended)</option>
+            <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (fast)</option>
+            <option value="claude-opus-4-6">claude-opus-4-6 (most capable)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">System Prompt (optional)</div>
+        <textarea class="form-input" id="cfg-system-prompt" rows="3" style="resize:vertical;" placeholder="You are an expert coding assistant...">You are an expert coding assistant. Help the user write clean, efficient, well-documented code. When providing code, use markdown code blocks with the appropriate language tag.</textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Max Tokens</div>
+        <input class="form-input" id="cfg-max-tokens" type="number" value="4096" min="256" max="32000">
+      </div>
+      <div class="form-group">
+        <div class="form-label">Temperature</div>
+        <input class="form-input" id="cfg-temperature" type="number" value="0.2" min="0" max="2" step="0.1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('model-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModelConfig()">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-gear" style="color:var(--accent);margin-right:8px;"></i>Settings</span>
+      <span class="modal-close" onclick="closeModal('settings-modal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Font Size</div>
+        <input class="form-input" id="set-fontsize" type="number" value="13" min="8" max="32" onchange="applySettings()">
+      </div>
+      <div class="form-group">
+        <div class="form-label">Font Family</div>
+        <select class="form-select" id="set-fontfamily" onchange="applySettings()">
+          <option value="'Cascadia Code','Consolas',monospace" selected>Cascadia Code</option>
+          <option value="'Fira Code',monospace">Fira Code</option>
+          <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
+          <option value="'Courier New',monospace">Courier New</option>
+          <option value="Consolas,monospace">Consolas</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Tab Size</div>
+        <select class="form-select" id="set-tabsize" onchange="applySettings()">
+          <option value="2" selected>2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Word Wrap</div>
+        <select class="form-select" id="set-wordwrap" onchange="applySettings()">
+          <option value="pre">Off</option>
+          <option value="pre-wrap">On</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Theme Color</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div onclick="setAccentColor('#6c7fff')" style="width:26px;height:26px;background:#6c7fff;border-radius:50%;cursor:pointer;border:2px solid white;"></div>
+          <div onclick="setAccentColor('#4ec9a0')" style="width:26px;height:26px;background:#4ec9a0;border-radius:50%;cursor:pointer;"></div>
+          <div onclick="setAccentColor('#f5c842')" style="width:26px;height:26px;background:#f5c842;border-radius:50%;cursor:pointer;"></div>
+          <div onclick="setAccentColor('#f47c7c')" style="width:26px;height:26px;background:#f47c7c;border-radius:50%;cursor:pointer;"></div>
+          <div onclick="setAccentColor('#c678dd')" style="width:26px;height:26px;background:#c678dd;border-radius:50%;cursor:pointer;"></div>
+          <div onclick="setAccentColor('#56b6c2')" style="width:26px;height:26px;background:#56b6c2;border-radius:50%;cursor:pointer;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('settings-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW FILE MODAL -->
+<div class="modal-overlay hidden" id="newfile-modal">
+  <div class="modal" style="width:340px;">
+    <div class="modal-header">
+      <span class="modal-title">New File</span>
+      <span class="modal-close" onclick="closeModal('newfile-modal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">File Name</div>
+        <input class="form-input" id="newfile-name" placeholder="e.g. main.py" onkeydown="if(event.key==='Enter')createNewFile()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('newfile-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createNewFile()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu hidden" id="context-menu"></div>
+
+<!-- HIDDEN FILE INPUT -->
+<input type="file" id="file-open-input" style="display:none" onchange="handleFileOpen(this)">
+<input type="file" id="folder-open-input" style="display:none" webkitdirectory onchange="handleFolderOpen(this)">
+
+<script>
+// ─── STATE ──────────────────────────────────────────────────────────────────
+const state = {
+  files: {},          // { path: { content, lang, modified } }
+  openTabs: [],       // [path, ...]
+  activeTab: null,
+  activeActivity: 'files',
+  aiConfig: { backend: 'ollama', ollamaUrl: 'http://localhost:11434', ollamaModel: 'qwen2.5-coder:7b', openaiUrl: 'https://api.openai.com/v1', openaiKey: '', openaiModel: 'gpt-4o', anthropicKey: '', anthropicModel: 'claude-sonnet-4-6', lmstudioUrl: 'http://localhost:1234/v1', lmstudioModel: '', systemPrompt: 'You are an expert coding assistant. Help the user write clean, efficient, well-documented code. When providing code, use markdown code blocks with the appropriate language tag.', maxTokens: 4096, temperature: 0.2 },
+  aiConnected: false,
+  aiHistory: [],
+  ctxFlags: { file: true, selection: false, errors: false },
+  wordWrap: false,
+  fontSize: 13,
+  tabSize: 2,
+  termHistory: [],
+  termHistoryIdx: -1,
+  currentPreset: 'ollama',
+  problems: [],
+  gitChanges: [],
+};
+
+// ─── FILE TREE DATA ──────────────────────────────────────────────────────────
+let fileTreeExpanded = {};
+
+// ─── LANGUAGE DETECTION ──────────────────────────────────────────────────────
+function detectLang(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const map = { js:'JavaScript', jsx:'JavaScript(JSX)', ts:'TypeScript', tsx:'TypeScript(TSX)', py:'Python', html:'HTML', css:'CSS', json:'JSON', md:'Markdown', rs:'Rust', go:'Go', java:'Java', cpp:'C++', c:'C', cs:'C#', php:'PHP', rb:'Ruby', swift:'Swift', kt:'Kotlin', sh:'Shell', sql:'SQL', yaml:'YAML', yml:'YAML', toml:'TOML', xml:'XML', vue:'Vue', svelte:'Svelte', dart:'Dart', r:'R', lua:'Lua', zig:'Zig' };
+  return map[ext] || 'Plain Text';
+}
+
+function fileIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const iconMap = { js:'🟨', jsx:'🟦', ts:'🔷', tsx:'🔷', py:'🐍', html:'🌐', css:'🎨', json:'📋', md:'📝', rs:'🦀', go:'🐹', java:'☕', cpp:'⚙️', c:'⚙️', cs:'🔵', php:'🐘', rb:'💎', swift:'🔶', kt:'🟣', sh:'🖥️', sql:'🗃️', yaml:'📄', yml:'📄', toml:'📄', xml:'📄', vue:'💚', svelte:'🧡', git:'🐙' };
+  return iconMap[ext] || '📄';
+}
+
+// ─── RENDER FILE TREE ────────────────────────────────────────────────────────
+function renderFileTree() {
+  const tree = document.getElementById('file-tree');
+  if (Object.keys(state.files).length === 0) {
+    tree.innerHTML = '<div style="color:var(--text-2);font-size:11px;padding:16px;text-align:center;">No files yet.<br>Click + to create a file.</div>';
+    return;
+  }
+  const folders = {};
+  const rootFiles = [];
+  Object.keys(state.files).forEach(path => {
+    const parts = path.split('/');
+    if (parts.length === 1) { rootFiles.push(path); }
+    else {
+      const folder = parts.slice(0, -1).join('/');
+      if (!folders[folder]) folders[folder] = [];
+      folders[folder].push(path);
+    }
+  });
+  let html = '';
+  const sortedFolders = Object.keys(folders).sort();
+  sortedFolders.forEach(folder => {
+    const isOpen = fileTreeExpanded[folder] !== false;
+    html += `<div class="tree-item folder" onclick="toggleFolder('${folder}')" oncontextmenu="showCtxMenu(event,'folder','${folder}')">
+      <span class="tree-item-icon">${isOpen ? '▼' : '▶'}</span>
+      <span>${'&nbsp;'.repeat(0)}📁 ${folder}</span>
+      <div class="ctx-btn">
+        <span onclick="event.stopPropagation();newFileInFolder('${folder}')" title="New file">+</span>
+      </div>
+    </div>`;
+    if (isOpen) {
+      folders[folder].sort().forEach(path => {
+        const name = path.split('/').pop();
+        const isActive = state.activeTab === path;
+        const isModified = state.files[path]?.modified;
+        html += `<div class="tree-item${isActive?' active':''}" onclick="openTab('${path}')" oncontextmenu="showCtxMenu(event,'file','${path}')">
+          <span class="tree-item-icon" style="padding-left:14px;">${fileIcon(name)}</span>
+          <span style="flex:1">${name}${isModified?'<span style="color:var(--amber);margin-left:3px;">●</span>':''}</span>
+          <div class="ctx-btn">
+            <span onclick="event.stopPropagation();renameFile('${path}')" title="Rename">✎</span>
+            <span onclick="event.stopPropagation();deleteFile('${path}')" title="Delete">✕</span>
+          </div>
+        </div>`;
+      });
+    }
+  });
+  rootFiles.sort().forEach(path => {
+    const isActive = state.activeTab === path;
+    const isModified = state.files[path]?.modified;
+    html += `<div class="tree-item${isActive?' active':''}" onclick="openTab('${path}')" oncontextmenu="showCtxMenu(event,'file','${path}')">
+      <span class="tree-item-icon">${fileIcon(path)}</span>
+      <span style="flex:1">${path}${isModified?'<span style="color:var(--amber);margin-left:3px;">●</span>':''}</span>
+      <div class="ctx-btn">
+        <span onclick="event.stopPropagation();renameFile('${path}')" title="Rename">✎</span>
+        <span onclick="event.stopPropagation();deleteFile('${path}')" title="Delete">✕</span>
+      </div>
+    </div>`;
+  });
+  tree.innerHTML = html;
+}
+
+function toggleFolder(folder) {
+  fileTreeExpanded[folder] = fileTreeExpanded[folder] === false ? true : false;
+  renderFileTree();
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function renderTabs() {
+  const tabsEl = document.getElementById('tabs');
+  let html = `<div id="new-tab-btn" style="display:flex;align-items:center;padding:0 10px;cursor:pointer;color:var(--text-2);font-size:18px;flex-shrink:0;" onclick="newFile()" title="New File">+</div>`;
+  state.openTabs.forEach(path => {
+    const name = path.split('/').pop();
+    const isActive = state.activeTab === path;
+    const isModified = state.files[path]?.modified;
+    html += `<div class="tab${isActive?' active':''}" onclick="openTab('${path}')" title="${path}">
+      <span>${fileIcon(name)}</span>
+      <span>${name}</span>
+      ${isModified ? '<span class="tab-dot"></span>' : ''}
+      <span class="tab-close" onclick="event.stopPropagation();closeTab('${path}')">✕</span>
+    </div>`;
+  });
+  tabsEl.innerHTML = html;
+}
+
+function openTab(path) {
+  if (!state.openTabs.includes(path)) state.openTabs.push(path);
+  state.activeTab = path;
+  document.getElementById('welcome').style.display = 'none';
+  const editor = document.getElementById('editor');
+  editor.classList.remove('hidden');
+  editor.value = state.files[path]?.content || '';
+  editor.style.fontFamily = document.getElementById('set-fontfamily')?.value || "'Cascadia Code','Consolas',monospace";
+  editor.style.fontSize = state.fontSize + 'px';
+  editor.style.whiteSpace = state.wordWrap ? 'pre-wrap' : 'pre';
+  updateStatusBar();
+  renderTabs();
+  renderFileTree();
+  editor.focus();
+}
+
+function closeTab(path) {
+  const idx = state.openTabs.indexOf(path);
+  state.openTabs.splice(idx, 1);
+  if (state.activeTab === path) {
+    state.activeTab = state.openTabs[Math.max(0, idx - 1)] || null;
+    if (state.activeTab) openTab(state.activeTab);
+    else {
+      document.getElementById('welcome').style.display = 'flex';
+      document.getElementById('editor').classList.add('hidden');
+    }
+  }
+  renderTabs();
+}
+
+// ─── FILE OPERATIONS ─────────────────────────────────────────────────────────
+function newFile() {
+  document.getElementById('newfile-name').value = '';
+  document.getElementById('newfile-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('newfile-name').focus(), 50);
+}
+
+function newFolder() {
+  const name = prompt('Folder name:');
+  if (!name) return;
+  // Create a placeholder file inside
+  const path = name + '/.gitkeep';
+  state.files[path] = { content: '', lang: 'Plain Text', modified: false };
+  renderFileTree();
+}
+
+function newFileInFolder(folder) {
+  const name = prompt('File name:');
+  if (!name) return;
+  const path = folder + '/' + name;
+  createFileInState(path, '');
+}
+
+function createNewFile() {
+  const name = document.getElementById('newfile-name').value.trim();
+  if (!name) return;
+  closeModal('newfile-modal');
+  createFileInState(name, getTemplateContent(name));
+}
+
+function getTemplateContent(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const templates = {
+    py: `# ${filename}\n\ndef main():\n    print("Hello, World!")\n\nif __name__ == "__main__":\n    main()\n`,
+    js: `// ${filename}\n\nfunction main() {\n  console.log("Hello, World!");\n}\n\nmain();\n`,
+    ts: `// ${filename}\n\nfunction main(): void {\n  console.log("Hello, World!");\n}\n\nmain();\n`,
+    html: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Document</title>\n  <style>\n    body { font-family: sans-serif; margin: 2rem; }\n  </style>\n</head>\n<body>\n  <h1>Hello, World!</h1>\n</body>\n</html>\n`,
+    css: `/* ${filename} */\n\n:root {\n  --primary: #6c7fff;\n}\n\nbody {\n  margin: 0;\n  font-family: sans-serif;\n}\n`,
+    json: `{\n  "name": "project",\n  "version": "1.0.0",\n  "description": ""\n}\n`,
+    md: `# ${filename.replace('.md','')}\n\n> A description of this document.\n\n## Overview\n\n...\n`,
+    rs: `fn main() {\n    println!("Hello, World!");\n}\n`,
+    go: `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, World!")\n}\n`,
+    java: `public class ${filename.replace('.java','')} {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}\n`,
+  };
+  return templates[ext] || '';
+}
+
+function createFileInState(path, content) {
+  state.files[path] = { content: content || '', lang: detectLang(path), modified: false };
+  addGitChange(path, 'A');
+  renderFileTree();
+  openTab(path);
+}
+
+function deleteFile(path) {
+  if (!confirm(`Delete "${path}"?`)) return;
+  delete state.files[path];
+  const idx = state.openTabs.indexOf(path);
+  if (idx !== -1) state.openTabs.splice(idx, 1);
+  if (state.activeTab === path) {
+    state.activeTab = state.openTabs[0] || null;
+    if (state.activeTab) openTab(state.activeTab);
+    else {
+      document.getElementById('welcome').style.display = 'flex';
+      document.getElementById('editor').classList.add('hidden');
+    }
+  }
+  addGitChange(path, 'D');
+  renderFileTree(); renderTabs();
+}
+
+function renameFile(path) {
+  const oldName = path.split('/').pop();
+  const newName = prompt('Rename to:', oldName);
+  if (!newName || newName === oldName) return;
+  const newPath = path.replace(oldName, newName);
+  state.files[newPath] = { ...state.files[path] };
+  delete state.files[path];
+  const ti = state.openTabs.indexOf(path);
+  if (ti !== -1) state.openTabs[ti] = newPath;
+  if (state.activeTab === path) state.activeTab = newPath;
+  renderFileTree(); renderTabs();
+}
+
+function openFileDialog() { document.getElementById('file-open-input').click(); }
+function openFolderDialog() { document.getElementById('folder-open-input').click(); }
+
+function handleFileOpen(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      state.files[file.name] = { content: e.target.result, lang: detectLang(file.name), modified: false };
+      renderFileTree();
+      openTab(file.name);
+    };
+    reader.readAsText(file);
+  });
+  input.value = '';
+}
+
+function handleFolderOpen(input) {
+  const files = Array.from(input.files);
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const path = file.webkitRelativePath || file.name;
+      try {
+        state.files[path] = { content: e.target.result, lang: detectLang(file.name), modified: false };
+      } catch(e) { state.files[path] = { content: '[Binary file]', lang: 'Plain Text', modified: false }; }
+      loaded++;
+      if (loaded === files.length) { renderFileTree(); termWrite(`Opened folder with ${files.length} files\n`, 'info'); }
+    };
+    reader.onerror = () => { loaded++; };
+    reader.readAsText(file);
+  });
+  input.value = '';
+}
+
+function saveFile() {
+  if (!state.activeTab) return;
+  const content = document.getElementById('editor').value;
+  state.files[state.activeTab].content = content;
+  state.files[state.activeTab].modified = false;
+  addGitChange(state.activeTab, 'M');
+  renderTabs(); renderFileTree();
+  termWrite(`Saved: ${state.activeTab}\n`, 'info');
+}
+
+function saveFileAs() {
+  if (!state.activeTab) return;
+  const newName = prompt('Save as:', state.activeTab);
+  if (!newName) return;
+  state.files[newName] = { content: document.getElementById('editor').value, lang: detectLang(newName), modified: false };
+  renderFileTree(); renderTabs(); openTab(newName);
+}
+
+function downloadProject() {
+  // Download current file
+  if (!state.activeTab) { alert('No file open'); return; }
+  const content = document.getElementById('editor').value;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = state.activeTab.split('/').pop();
+  a.click();
+}
+
+function collapseAll() {
+  Object.keys(fileTreeExpanded).forEach(k => fileTreeExpanded[k] = false);
+  renderFileTree();
+}
+
+// ─── EDITOR ──────────────────────────────────────────────────────────────────
+const editor = document.getElementById('editor');
+editor.addEventListener('input', () => {
+  if (state.activeTab) {
+    state.files[state.activeTab].modified = true;
+    renderTabs();
+    renderFileTree();
+  }
+});
+editor.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = editor.selectionStart, end = editor.selectionEnd;
+    const indent = '  '.repeat(state.tabSize === 4 ? 2 : 1);
+    editor.value = editor.value.substring(0, start) + indent + editor.value.substring(end);
+    editor.selectionStart = editor.selectionEnd = start + indent.length;
+    if (state.activeTab) state.files[state.activeTab].modified = true;
+  }
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveFile(); }
+  if (e.ctrlKey && e.key === 'f') { e.preventDefault(); toggleSearch(); }
+  if (e.key === 'F5') { e.preventDefault(); runCode(); }
+});
+editor.addEventListener('keyup', updateCursorPos);
+editor.addEventListener('click', updateCursorPos);
+
+function updateCursorPos() {
+  const val = editor.value.substring(0, editor.selectionStart);
+  const lines = val.split('\n');
+  const ln = lines.length, col = lines[lines.length - 1].length + 1;
+  document.getElementById('cursor-pos').textContent = `Ln ${ln}, Col ${col}`;
+}
+
+function updateStatusBar() {
+  if (!state.activeTab) return;
+  document.getElementById('file-lang').textContent = detectLang(state.activeTab);
+}
+
+function editorCmd(cmd) {
+  editor.focus();
+  document.execCommand(cmd);
+}
+
+function changeFontSize(delta) {
+  state.fontSize = Math.max(8, Math.min(32, state.fontSize + delta));
+  editor.style.fontSize = state.fontSize + 'px';
+  if (document.getElementById('set-fontsize')) document.getElementById('set-fontsize').value = state.fontSize;
+}
+
+function toggleWordWrap() {
+  state.wordWrap = !state.wordWrap;
+  editor.style.whiteSpace = state.wordWrap ? 'pre-wrap' : 'pre';
+}
+
+function toggleIndent() {
+  state.tabSize = state.tabSize === 2 ? 4 : 2;
+  document.getElementById('indent-type').textContent = `Spaces: ${state.tabSize}`;
+}
+
+function applySettings() {
+  const fs = parseInt(document.getElementById('set-fontsize').value);
+  const ff = document.getElementById('set-fontfamily').value;
+  const ts = parseInt(document.getElementById('set-tabsize').value);
+  const ww = document.getElementById('set-wordwrap').value;
+  state.fontSize = fs; state.tabSize = ts;
+  editor.style.fontSize = fs + 'px';
+  editor.style.fontFamily = ff;
+  editor.style.whiteSpace = ww;
+  document.getElementById('indent-type').textContent = `Spaces: ${ts}`;
+}
+
+function setAccentColor(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  document.documentElement.style.setProperty('--accent-dim', `rgba(${r},${g},${b},0.2)`);
+}
+
+// ─── SEARCH ──────────────────────────────────────────────────────────────────
+let searchShowing = false;
+function toggleSearch() {
+  searchShowing = !searchShowing;
+  const overlay = document.getElementById('search-overlay');
+  overlay.style.display = searchShowing ? 'flex' : 'none';
+  if (searchShowing) document.getElementById('search-input').focus();
+}
+function closeSearch() { searchShowing = false; document.getElementById('search-overlay').style.display = 'none'; }
+
+document.getElementById('search-input').addEventListener('input', e => {
+  const q = e.target.value;
+  if (!q || !state.activeTab) { document.getElementById('search-count').textContent=''; return; }
+  const text = editor.value;
+  const matches = [...text.matchAll(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'))];
+  document.getElementById('search-count').textContent = `${matches.length} match${matches.length!==1?'es':''}`;
+});
+
+function globalSearch(q) {
+  const results = document.getElementById('search-results');
+  if (!q) { results.innerHTML = ''; return; }
+  let html = '';
+  Object.entries(state.files).forEach(([path, file]) => {
+    const lines = file.content.split('\n');
+    const matches = [];
+    lines.forEach((line, i) => {
+      if (line.toLowerCase().includes(q.toLowerCase())) {
+        const hi = line.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m => `<mark>${m}</mark>`);
+        matches.push({ num: i+1, text: hi });
+      }
+    });
+    if (matches.length) {
+      html += `<div class="search-result-file">${path} (${matches.length})</div>`;
+      matches.slice(0,5).forEach(m => {
+        html += `<div class="search-result-line" onclick="openTab('${path}')"><span class="search-result-num">${m.num}</span><span class="search-result-text">${m.text}</span></div>`;
+      });
+    }
+  });
+  results.innerHTML = html || '<div style="color:var(--text-2);font-size:12px;padding:8px;">No results</div>';
+}
+
+// ─── TERMINAL ────────────────────────────────────────────────────────────────
+const termEl = document.getElementById('terminal');
+
+function termWrite(text, cls = '') {
+  const line = document.createElement('div');
+  line.className = 'term-line' + (cls ? ' ' + cls : '');
+  line.textContent = text;
+  termEl.appendChild(line);
+  termEl.scrollTop = termEl.scrollHeight;
+}
+
+function termWriteHTML(html) {
+  const line = document.createElement('div');
+  line.className = 'term-line';
+  line.innerHTML = html;
+  termEl.appendChild(line);
+  termEl.scrollTop = termEl.scrollHeight;
+}
+
+function clearTerminal() { termEl.innerHTML = ''; }
+
+// Simulated terminal commands
+const fakeFS = { cwd: '~/project', env: { PATH: '/usr/local/bin:/usr/bin', HOME: '~', USER: 'dev' } };
+const termCommands = {
+  ls: () => { const files = Object.keys(state.files).filter(f => !f.includes('/')).join('  ') || '(empty)'; termWrite(files); },
+  pwd: () => termWrite(fakeFS.cwd),
+  clear: () => clearTerminal(),
+  help: () => { termWrite('Available commands: ls, pwd, clear, echo, cat, mkdir, touch, rm, git, npm, python, node, pip, cargo', 'info'); },
+  echo: args => termWrite(args.join(' ')),
+  cat: args => { const f = state.files[args[0]]; termWrite(f ? f.content : `cat: ${args[0]}: No such file`); },
+  mkdir: args => { if(args[0]) { termWrite(`Created directory: ${args[0]}`); } },
+  touch: args => { if(args[0]) { state.files[args[0]] = {content:'',lang:detectLang(args[0]),modified:false}; renderFileTree(); termWrite(`Created: ${args[0]}`); } },
+  rm: args => { if(args[0] && state.files[args[0]]) { deleteFile(args[0]); } else { termWrite(`rm: cannot remove '${args[0]}': No such file`,'err'); } },
+  git: args => { gitCmd(args[0]||'status'); },
+  npm: args => {
+    const sub = args[0];
+    if (sub === 'install' || sub === 'i') { termWrite('npm: installing dependencies...','info'); setTimeout(()=>termWrite('added 127 packages in 3.4s','info'), 1200); }
+    else if (sub === 'start') { termWrite('npm: starting development server...','info'); setTimeout(()=>termWrite('  ➜  Local:   http://localhost:3000/','info'),800); }
+    else if (sub === 'run') { termWrite(`npm run ${args[1]||''}...`,'info'); }
+    else if (sub === 'test') { termWrite('npm test: running tests...','info'); setTimeout(()=>termWrite('All tests passed ✓','info'),1000); }
+    else termWrite(`npm ${args.join(' ')}`, 'info');
+  },
+  python: args => { if (args[0]) { const f=state.files[args[0]]; if(f) { termWrite(`Python 3.11.0 running ${args[0]}...`,'info'); setTimeout(()=>{ if(f.content.includes('print')) termWrite('Hello, World!'); },400); } else termWrite(`python: can't open file '${args[0]}': No such file`,'err'); } else termWrite('Python 3.11.0 (interactive mode not supported in IDE terminal)'); },
+  node: args => { if(args[0]) { const f=state.files[args[0]]; if(f) { termWrite(`Node.js v20 running ${args[0]}...`,'info'); setTimeout(()=>{ if(f.content.includes('console.log')) termWrite('Hello, World!'); },400); } else termWrite(`node: cannot open ${args[0]}`,'err'); } else termWrite('Node.js v20.0.0 (REPL not supported in IDE terminal)'); },
+  pip: args => { termWrite(`pip ${args.join(' ')}: installing...`,'info'); setTimeout(()=>termWrite('Successfully installed package','info'),1000); },
+  cargo: args => { const sub=args[0]; if(sub==='build') { termWrite('   Compiling project...','info'); setTimeout(()=>termWrite('    Finished release [optimized] target(s)','info'),1500); } else if(sub==='run') { termWrite('   Compiling...','info'); setTimeout(()=>{ termWrite('    Finished'); termWrite('Hello, World!'); },1200); } else termWrite(`cargo ${args.join(' ')}`); },
+};
+
+function handleTermInput(e) {
+  const input = document.getElementById('term-input');
+  if (e.key === 'Enter') {
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    state.termHistory.unshift(cmd);
+    state.termHistoryIdx = -1;
+    termWrite(`${fakeFS.cwd} $ ${cmd}`, 'info');
+    input.value = '';
+    processTermCmd(cmd);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (state.termHistoryIdx < state.termHistory.length - 1) {
+      state.termHistoryIdx++;
+      input.value = state.termHistory[state.termHistoryIdx] || '';
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (state.termHistoryIdx > 0) { state.termHistoryIdx--; input.value = state.termHistory[state.termHistoryIdx] || ''; }
+    else { state.termHistoryIdx = -1; input.value = ''; }
+  } else if (e.key === 'l' && e.ctrlKey) { e.preventDefault(); clearTerminal(); }
+}
+
+function processTermCmd(cmd) {
+  const parts = cmd.split(' ').filter(Boolean);
+  const command = parts[0], args = parts.slice(1);
+  if (termCommands[command]) {
+    termCommands[command](args);
+  } else if (command === 'cd') {
+    fakeFS.cwd = args[0] ? (args[0] === '..' ? '~/project' : `~/project/${args[0]}`) : '~/project';
+    document.getElementById('term-prompt').textContent = `${fakeFS.cwd} $`;
+  } else {
+    termWrite(`${command}: command not found. Type 'help' for available commands.`, 'err');
+  }
+}
+
+function runCode() {
+  if (!state.activeTab) return;
+  switchPanelTabById('terminal');
+  const lang = detectLang(state.activeTab);
+  const name = state.activeTab.split('/').pop();
+  termWrite(`─── Running: ${name} ───`, 'info');
+  const handlers = { 'Python': () => termCommands.python([name]), 'JavaScript': () => termCommands.node([name]), 'TypeScript': () => { termWrite('tsc: compiling...','info'); setTimeout(()=>termWrite('tsc: done. Running...','info'),500); setTimeout(()=>termCommands.node([name.replace('.ts','.js')]),800); }, 'Rust': () => termCommands.cargo(['run']), };
+  const handler = handlers[lang];
+  if (handler) handler();
+  else termWrite(`Running ${lang} files requires the appropriate runtime installed.\nUse the terminal to run: your-runtime ${name}`);
+}
+
+function runInTerminal() { runCode(); }
+
+// ─── GIT ─────────────────────────────────────────────────────────────────────
+function addGitChange(path, status) {
+  const existing = state.gitChanges.find(c => c.path === path);
+  if (existing) { existing.status = status; }
+  else state.gitChanges.push({ path, status });
+  renderGitChanges();
+}
+
+function renderGitChanges() {
+  const el = document.getElementById('git-changes');
+  el.innerHTML = state.gitChanges.map(c => `<div class="git-change">
+    <span class="git-status ${c.status}">${c.status}</span>
+    <span class="git-file">${c.path}</span>
+  </div>`).join('');
+}
+
+function gitCmd(cmd) {
+  switchPanelTabById('terminal');
+  const msgs = {
+    init: ['Initialized empty Git repository in ~/project/.git/', 'info'],
+    status: [state.gitChanges.length ? `Changes: ${state.gitChanges.map(c=>c.status+' '+c.path).join(', ')}` : 'nothing to commit, working tree clean', 'info'],
+    add: ['Staged all changes', 'info'],
+    pull: ['Already up to date.', 'info'],
+    push: ['Pushing to origin/main...', 'info'],
+  };
+  termWrite(`git ${cmd}`, 'info');
+  if (msgs[cmd]) {
+    termWrite(msgs[cmd][0], msgs[cmd][1]);
+    if (cmd === 'push') setTimeout(() => termWrite('To https://github.com/user/project.git\n   a1b2c3d..e4f5g6h  main -> main', 'info'), 600);
+  }
+}
+
+function gitCommit() {
+  const msg = document.getElementById('git-msg').value.trim();
+  if (!msg) { alert('Enter a commit message'); return; }
+  switchPanelTabById('terminal');
+  termWrite(`git commit -m "${msg}"`, 'info');
+  setTimeout(() => { termWrite(`[main a1b2c3d] ${msg}`, 'info'); termWrite(`${state.gitChanges.length} file(s) changed`, 'info'); state.gitChanges = []; renderGitChanges(); document.getElementById('git-msg').value = ''; }, 400);
+}
+
+// ─── AI ──────────────────────────────────────────────────────────────────────
+function toggleCtx(key) {
+  state.ctxFlags[key] = !state.ctxFlags[key];
+  document.getElementById(`ctx-${key}`).classList.toggle('active');
+}
+
+function buildSystemPrompt() {
+  let sys = state.aiConfig.systemPrompt || '';
+  if (state.ctxFlags.file && state.activeTab) {
+    const content = state.files[state.activeTab]?.content || '';
+    sys += `\n\nCurrent file: ${state.activeTab} (${detectLang(state.activeTab)})\n\`\`\`\n${content.slice(0, 8000)}\n\`\`\``;
+  }
+  if (state.ctxFlags.errors && state.problems.length) {
+    sys += `\n\nCurrent errors:\n${state.problems.map(p => `- ${p.message} (${p.file}:${p.line})`).join('\n')}`;
+  }
+  return sys;
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('ai-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!state.aiConfig.backend || !state.aiConnected) {
+    addAIMsg('system', '⚠️ No AI model connected. Please configure one in AI → Configure AI Model.');
+    return;
+  }
+
+  const selection = state.ctxFlags.selection ? getEditorSelection() : null;
+  let userContent = msg;
+  if (selection) userContent += `\n\nSelected code:\n\`\`\`\n${selection}\n\`\`\``;
+
+  addAIMsg('user', msg);
+  input.value = '';
+  input.style.height = 'auto';
+  state.aiHistory.push({ role: 'user', content: userContent });
+
+  const thinkingEl = addThinkingIndicator();
+  document.getElementById('ai-send').disabled = true;
+
+  try {
+    const response = await callAIBackend(state.aiHistory, buildSystemPrompt());
+    thinkingEl.remove();
+    state.aiHistory.push({ role: 'assistant', content: response });
+    addAIMsg('assistant', response);
+  } catch (err) {
+    thinkingEl.remove();
+    addAIMsg('system', `❌ Error: ${err.message}`);
+  }
+  document.getElementById('ai-send').disabled = false;
+}
+
+async function callAIBackend(messages, systemPrompt) {
+  const cfg = state.aiConfig;
+
+  if (cfg.backend === 'ollama') {
+    const res = await fetch(`${cfg.ollamaUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: cfg.ollamaModel, messages: [{ role: 'system', content: systemPrompt }, ...messages], stream: false, options: { temperature: cfg.temperature, num_predict: cfg.maxTokens } })
+    });
+    if (!res.ok) throw new Error(`Ollama error: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    return data.message?.content || '';
+  }
+
+  if (cfg.backend === 'lmstudio' || (cfg.backend === 'openai' && cfg.openaiUrl !== 'https://api.openai.com/v1')) {
+    const url = cfg.backend === 'lmstudio' ? cfg.lmstudioUrl : cfg.openaiUrl;
+    const model = cfg.backend === 'lmstudio' ? cfg.lmstudioModel : cfg.openaiModel;
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.openaiKey && cfg.backend === 'openai') headers['Authorization'] = `Bearer ${cfg.openaiKey}`;
+    const res = await fetch(`${url}/chat/completions`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: systemPrompt }, ...messages], max_tokens: cfg.maxTokens, temperature: cfg.temperature })
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  if (cfg.backend === 'openai') {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.openaiKey}` },
+      body: JSON.stringify({ model: cfg.openaiModel, messages: [{ role: 'system', content: systemPrompt }, ...messages], max_tokens: cfg.maxTokens, temperature: cfg.temperature })
+    });
+    if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  if (cfg.backend === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: cfg.anthropicModel, max_tokens: cfg.maxTokens, system: systemPrompt, messages })
+    });
+    if (!res.ok) throw new Error(`Anthropic error: ${res.status}`);
+    const data = await res.json();
+    return data.content?.[0]?.text || '';
+  }
+
+  throw new Error('Unknown backend');
+}
+
+function addAIMsg(role, content) {
+  const msgs = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = `ai-msg ${role}`;
+  if (role === 'assistant') {
+    div.innerHTML = formatAIResponse(content);
+    // Add copy buttons to code blocks
+    div.querySelectorAll('pre').forEach(pre => {
+      const btn = document.createElement('span');
+      btn.textContent = '⎘ Copy';
+      btn.style.cssText = 'cursor:pointer;font-size:10px;color:var(--accent);float:right;margin-bottom:4px;display:block;';
+      btn.onclick = () => { navigator.clipboard.writeText(pre.textContent); btn.textContent = '✓ Copied!'; setTimeout(()=>btn.textContent='⎘ Copy',1500); };
+      pre.parentNode.insertBefore(btn, pre);
+    });
+  } else {
+    div.textContent = content;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function formatAIResponse(text) {
+  // Code blocks
+  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code>${escapeHtml(code.trim())}</code></pre>`);
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, '<code style="background:var(--bg-0);padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
+  // Bold
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Line breaks
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addThinkingIndicator() {
+  const msgs = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg assistant';
+  div.innerHTML = '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function getEditorSelection() {
+  const s = editor.selectionStart, e = editor.selectionEnd;
+  return s !== e ? editor.value.substring(s, e) : null;
+}
+
+function clearAIChat() {
+  state.aiHistory = [];
+  document.getElementById('ai-messages').innerHTML = '<div class="ai-msg system">Chat cleared. Start a new conversation!</div>';
+}
+
+function handleAIInput(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAIMessage(); }
+}
+
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(120, el.scrollHeight) + 'px';
+}
+
+function aiExplainCode() {
+  const sel = getEditorSelection();
+  if (!sel) { alert('Select some code first'); return; }
+  document.getElementById('ai-input').value = 'Explain this code in detail:';
+  toggleCtx('selection'); state.ctxFlags.selection = true;
+  document.getElementById('ctx-selection').classList.add('active');
+  sendAIMessage();
+}
+
+function aiFixCode() {
+  const sel = getEditorSelection();
+  if (!sel) { alert('Select some code first'); return; }
+  document.getElementById('ai-input').value = 'Fix and improve this code:';
+  state.ctxFlags.selection = true;
+  document.getElementById('ctx-selection').classList.add('active');
+  sendAIMessage();
+}
+
+function aiDocCode() {
+  document.getElementById('ai-input').value = 'Generate comprehensive documentation and comments for the current file:';
+  sendAIMessage();
+}
+
+// ─── MODEL CONFIG ─────────────────────────────────────────────────────────────
+function openModelConfig() {
+  document.getElementById('model-modal').classList.remove('hidden');
+  // Populate fields
+  document.getElementById('cfg-ollama-url').value = state.aiConfig.ollamaUrl;
+  document.getElementById('cfg-ollama-model').value = state.aiConfig.ollamaModel;
+  document.getElementById('cfg-openai-url').value = state.aiConfig.openaiUrl;
+  document.getElementById('cfg-openai-key').value = state.aiConfig.openaiKey;
+  document.getElementById('cfg-openai-model').value = state.aiConfig.openaiModel;
+  document.getElementById('cfg-anthropic-key').value = state.aiConfig.anthropicKey;
+  document.getElementById('cfg-anthropic-model').value = state.aiConfig.anthropicModel;
+  document.getElementById('cfg-system-prompt').value = state.aiConfig.systemPrompt;
+  document.getElementById('cfg-max-tokens').value = state.aiConfig.maxTokens;
+  document.getElementById('cfg-temperature').value = state.aiConfig.temperature;
+  selectPreset(state.aiConfig.backend || 'ollama');
+}
+
+function selectPreset(name) {
+  state.currentPreset = name;
+  document.querySelectorAll('.model-preset').forEach(p => p.classList.remove('active'));
+  document.getElementById('preset-' + name)?.classList.add('active');
+  ['ollama','lmstudio','openai','anthropic'].forEach(b => {
+    const el = document.getElementById('config-' + b);
+    if (el) el.classList.toggle('hidden', b !== name);
+  });
+}
+
+async function testOllamaConnection() {
+  const url = document.getElementById('cfg-ollama-url').value;
+  const result = document.getElementById('ollama-test-result');
+  result.textContent = '⏳ Testing...'; result.style.color = 'var(--amber)';
+  try {
+    const res = await fetch(`${url}/api/tags`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) { result.textContent = '✓ Connected!'; result.style.color = 'var(--green)'; document.getElementById('ollama-dot').style.background = 'var(--green)'; }
+    else { result.textContent = `✗ Error ${res.status}`; result.style.color = 'var(--red)'; }
+  } catch (e) { result.textContent = '✗ Cannot connect. Is Ollama running?'; result.style.color = 'var(--red)'; }
+}
+
+async function fetchOllamaModels() {
+  const url = document.getElementById('cfg-ollama-url').value;
+  const listEl = document.getElementById('ollama-models-list');
+  listEl.style.display = 'block'; listEl.innerHTML = '⏳ Fetching...';
+  try {
+    const res = await fetch(`${url}/api/tags`);
+    const data = await res.json();
+    const models = data.models || [];
+    if (models.length === 0) { listEl.innerHTML = '<div style="color:var(--text-2);font-size:12px;">No models installed. Run: ollama pull qwen2.5-coder:7b</div>'; return; }
+    listEl.innerHTML = models.map(m =>
+      `<div style="padding:4px;cursor:pointer;font-size:12px;border-radius:3px;color:var(--text-1);" onmouseover="this.style.background='var(--bg-3)'" onmouseout="this.style.background=''" onclick="document.getElementById('cfg-ollama-model').value='${m.name}'">${m.name} <span style="color:var(--text-2);font-size:10px;">${(m.size/1e9).toFixed(1)}GB</span></div>`
+    ).join('');
+  } catch (e) { listEl.innerHTML = '<div style="color:var(--red);font-size:12px;">Failed to fetch models</div>'; }
+}
+
+async function testLMStudioConnection() {
+  const url = document.getElementById('cfg-lmstudio-url').value;
+  const result = document.getElementById('lmstudio-test-result');
+  result.textContent = '⏳ Testing...'; result.style.color = 'var(--amber)';
+  try {
+    const res = await fetch(`${url}/models`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) { result.textContent = '✓ Connected!'; result.style.color = 'var(--green)'; }
+    else { result.textContent = `✗ Error ${res.status}`; result.style.color = 'var(--red)'; }
+  } catch (e) { result.textContent = '✗ Cannot connect. Is LM Studio server running?'; result.style.color = 'var(--red)'; }
+}
+
+async function testConnection() {
+  openModelConfig();
+  setTimeout(() => {
+    if (state.currentPreset === 'ollama') testOllamaConnection();
+    else if (state.currentPreset === 'lmstudio') testLMStudioConnection();
+  }, 100);
+}
+
+function saveModelConfig() {
+  const preset = state.currentPreset;
+  state.aiConfig.backend = preset;
+  state.aiConfig.ollamaUrl = document.getElementById('cfg-ollama-url').value;
+  state.aiConfig.ollamaModel = document.getElementById('cfg-ollama-model').value;
+  state.aiConfig.lmstudioUrl = document.getElementById('cfg-lmstudio-url').value;
+  state.aiConfig.lmstudioModel = document.getElementById('cfg-lmstudio-model').value;
+  state.aiConfig.openaiUrl = document.getElementById('cfg-openai-url').value;
+  state.aiConfig.openaiKey = document.getElementById('cfg-openai-key').value;
+  state.aiConfig.openaiModel = document.getElementById('cfg-openai-model').value;
+  state.aiConfig.anthropicKey = document.getElementById('cfg-anthropic-key').value;
+  state.aiConfig.anthropicModel = document.getElementById('cfg-anthropic-model').value;
+  state.aiConfig.systemPrompt = document.getElementById('cfg-system-prompt').value;
+  state.aiConfig.maxTokens = parseInt(document.getElementById('cfg-max-tokens').value);
+  state.aiConfig.temperature = parseFloat(document.getElementById('cfg-temperature').value);
+
+  const modelName = { ollama: state.aiConfig.ollamaModel, lmstudio: state.aiConfig.lmstudioModel, openai: state.aiConfig.openaiModel, anthropic: state.aiConfig.anthropicModel }[preset] || 'Unknown';
+  state.aiConnected = true;
+  document.getElementById('ai-status-dot').style.background = 'var(--green)';
+  document.getElementById('ai-status-text').textContent = `AI: ${modelName}`;
+  document.getElementById('ai-model-badge').textContent = modelName;
+  document.getElementById('header-model-name').textContent = modelName;
+  addAIMsg('system', `✓ Connected to ${modelName} via ${preset}. How can I help you code today?`);
+  closeModal('model-modal');
+  saveConfigToStorage();
+}
+
+function saveConfigToStorage() {
+  try { localStorage.setItem('nativide_config', JSON.stringify(state.aiConfig)); } catch(e) {}
+}
+
+function loadConfigFromStorage() {
+  try {
+    const saved = localStorage.getItem('nativide_config');
+    if (saved) { Object.assign(state.aiConfig, JSON.parse(saved)); }
+  } catch(e) {}
+}
+
+// ─── MODALS ───────────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
+});
+
+// ─── PANELS ───────────────────────────────────────────────────────────────────
+function togglePanel(panel) {
+  if (panel === 'bottom') {
+    const el = document.getElementById('bottom-panel');
+    el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    const resizeV = document.getElementById('resize-bottom');
+    resizeV.style.display = el.style.display === 'none' ? 'none' : '';
+  } else if (panel === 'ai') {
+    const el = document.getElementById('ai-panel');
+    const resizeAI = document.getElementById('resize-ai');
+    const hidden = el.style.display === 'none';
+    el.style.display = hidden ? 'flex' : 'none';
+    resizeAI.style.display = hidden ? '' : 'none';
+  }
+}
+
+function switchPanelTab(name, el) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('panel-terminal').style.display = name === 'terminal' ? 'flex' : 'none';
+  document.getElementById('panel-problems').style.display = name === 'problems' ? 'flex' : 'none';
+  document.getElementById('panel-output').style.display = name === 'output' ? 'flex' : 'none';
+}
+
+function switchPanelTabById(name) {
+  const tabs = document.querySelectorAll('.panel-tab');
+  const names = ['terminal','problems','output'];
+  switchPanelTab(name, tabs[names.indexOf(name)]);
+}
+
+// ─── ACTIVITY ─────────────────────────────────────────────────────────────────
+function setActivity(name) {
+  state.activeActivity = name;
+  document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('act-'+name)?.classList.add('active');
+  document.getElementById('files-panel').style.display = name === 'files' ? 'flex' : 'none';
+  const searchSb = document.getElementById('search-panel-sidebar');
+  searchSb.style.display = name === 'search' ? 'flex' : 'none';
+  searchSb.classList.toggle('hidden', name !== 'search');
+  const gitSb = document.getElementById('git-panel-sidebar');
+  gitSb.style.display = name === 'git' ? 'flex' : 'none';
+  gitSb.classList.toggle('hidden', name !== 'git');
+}
+
+// ─── RESIZE HANDLES ──────────────────────────────────────────────────────────
+function initResize(handleId, getEl, axis) {
+  const handle = document.getElementById(handleId);
+  if (!handle) return;
+  let dragging = false, startPos = 0, startSize = 0;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; handle.classList.add('dragging');
+    startPos = axis === 'x' ? e.clientX : e.clientY;
+    const el = getEl(); startSize = axis === 'x' ? el.getBoundingClientRect().width : el.getBoundingClientRect().height;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const el = getEl();
+    const delta = (axis === 'x' ? e.clientX : e.clientY) - startPos;
+    const newSize = Math.max(80, startSize + (handleId === 'resize-ai' || handleId === 'resize-bottom' ? -delta : delta));
+    if (axis === 'x') el.style.width = newSize + 'px';
+    else el.style.height = newSize + 'px';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; handle.classList.remove('dragging'); });
+}
+
+initResize('resize-sidebar', () => document.getElementById('sidebar'), 'x');
+initResize('resize-ai', () => document.getElementById('ai-panel'), 'x');
+initResize('resize-bottom', () => document.getElementById('bottom-panel'), 'y');
+
+// ─── CONTEXT MENU ────────────────────────────────────────────────────────────
+function showCtxMenu(e, type, path) {
+  e.preventDefault();
+  const menu = document.getElementById('context-menu');
+  const items = type === 'file' ? [
+    { label: '📂 Open', action: () => openTab(path) },
+    { label: '✎ Rename', action: () => renameFile(path) },
+    { label: '⎘ Duplicate', action: () => { const n = prompt('New name:', path); if(n) { state.files[n]={...state.files[path]}; renderFileTree(); } } },
+    { sep: true },
+    { label: '🗑 Delete', action: () => deleteFile(path) },
+    { sep: true },
+    { label: '🤖 AI: Explain File', action: () => { openTab(path); document.getElementById('ai-input').value='Explain this file:'; sendAIMessage(); } },
+  ] : [
+    { label: '+ New File Here', action: () => newFileInFolder(path) },
+    { label: '🗑 Delete Folder', action: () => { if(confirm(`Delete folder "${path}"?`)) { Object.keys(state.files).filter(f=>f.startsWith(path+'/')).forEach(f=>delete state.files[f]); renderFileTree(); } } },
+  ];
+  menu.innerHTML = items.map(i => i.sep ? '<div class="ctx-menu-sep"></div>' : `<div class="ctx-menu-item" data-action="${encodeURIComponent(i.label)}">${i.label}</div>`).join('');
+  menu.querySelectorAll('.ctx-menu-item').forEach((el, idx) => {
+    const item = items.filter(i => !i.sep)[idx]; if (item) el.onclick = () => { item.action(); hideCtxMenu(); };
+  });
+  menu.style.left = e.clientX + 'px'; menu.style.top = e.clientY + 'px';
+  menu.classList.remove('hidden');
+}
+
+function hideCtxMenu() { document.getElementById('context-menu').classList.add('hidden'); }
+document.addEventListener('click', hideCtxMenu);
+document.addEventListener('contextmenu', e => { if (!e.target.closest('#file-tree') && !e.target.closest('#git-changes')) hideCtxMenu(); });
+
+// ─── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'n') { e.preventDefault(); newFile(); }
+  if (e.ctrlKey && e.key === 'o') { e.preventDefault(); openFileDialog(); }
+  if (e.ctrlKey && e.key === 's' && !e.shiftKey && document.activeElement !== editor) { e.preventDefault(); saveFile(); }
+  if (e.ctrlKey && e.shiftKey && e.key === 'S') { e.preventDefault(); saveFileAs(); }
+  if (e.ctrlKey && e.key === '`') { e.preventDefault(); togglePanel('bottom'); }
+  if (e.ctrlKey && e.shiftKey && e.key === 'A') { e.preventDefault(); togglePanel('ai'); }
+  if (e.key === 'Escape') { closeSearch(); hideCtxMenu(); }
+  if (e.ctrlKey && e.key === '=') { e.preventDefault(); changeFontSize(1); }
+  if (e.ctrlKey && e.key === '-') { e.preventDefault(); changeFontSize(-1); }
+  if (e.altKey && e.key === 'z') { e.preventDefault(); toggleWordWrap(); }
+  if (e.key === 'F5') { e.preventDefault(); runCode(); }
+});
+
+// ─── SAMPLE PROJECT ───────────────────────────────────────────────────────────
+function loadSampleProject() {
+  const sampleFiles = {
+    'README.md': `# My Project\n\nA sample project to get you started with NativeIDE.\n\n## Features\n- Modern file editor\n- Built-in terminal\n- AI-powered code assistant (connect your local model!)\n- Git integration\n\n## Getting Started\n1. Configure your AI model (AI menu or click the badge)\n2. Open or create files\n3. Run your code with F5 or the Run button\n`,
+    'main.py': `#!/usr/bin/env python3\n"""Main entry point for the application."""\n\nfrom utils import greet, calculate\n\ndef main():\n    """Run the main application logic."""\n    name = input("Enter your name: ")\n    greeting = greet(name)\n    print(greeting)\n    \n    result = calculate(42, 7)\n    print(f"42 × 7 = {result}")\n\nif __name__ == "__main__":\n    main()\n`,
+    'utils.py': `"""Utility functions for the application."""\n\ndef greet(name: str) -> str:\n    """Generate a greeting message.\n    \n    Args:\n        name: The name to greet.\n    \n    Returns:\n        A friendly greeting string.\n    """\n    return f"Hello, {name}! Welcome to NativeIDE."\n\ndef calculate(a: int, b: int) -> int:\n    """Multiply two numbers together.\n    \n    Args:\n        a: First number.\n        b: Second number.\n    \n    Returns:\n        The product of a and b.\n    """\n    return a * b\n`,
+    'src/app.js': `// Main application module\nimport { Router } from './router.js';\nimport { Store } from './store.js';\n\nclass App {\n  constructor() {\n    this.router = new Router();\n    this.store = new Store();\n    this.init();\n  }\n\n  init() {\n    console.log('App initialized');\n    this.router.navigate(window.location.pathname);\n    document.addEventListener('click', this.handleClick.bind(this));\n  }\n\n  handleClick(event) {\n    const link = event.target.closest('[data-link]');\n    if (link) {\n      event.preventDefault();\n      this.router.navigate(link.dataset.link);\n    }\n  }\n}\n\nexport default new App();\n`,
+    'src/styles.css': `/* Application Styles */\n:root {\n  --primary: #6c7fff;\n  --primary-dark: #3a3f7a;\n  --bg: #0e0e10;\n  --surface: #1a1a1e;\n  --text: #e8e8f0;\n  --text-muted: #a0a0b8;\n  --border: #2e2e38;\n  --radius: 8px;\n}\n\n* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  background: var(--bg);\n  color: var(--text);\n  font-family: 'Segoe UI', system-ui, sans-serif;\n  font-size: 14px;\n  line-height: 1.6;\n}\n\n.container {\n  max-width: 1200px;\n  margin: 0 auto;\n  padding: 0 20px;\n}\n\n.btn {\n  padding: 8px 16px;\n  background: var(--primary);\n  color: white;\n  border: none;\n  border-radius: var(--radius);\n  cursor: pointer;\n  font-size: 14px;\n  transition: opacity 0.2s;\n}\n\n.btn:hover { opacity: 0.85; }\n`,
+    'package.json': `{\n  "name": "my-project",\n  "version": "1.0.0",\n  "description": "A sample NativeIDE project",\n  "main": "src/app.js",\n  "type": "module",\n  "scripts": {\n    "start": "node src/app.js",\n    "dev": "nodemon src/app.js",\n    "build": "rollup -c",\n    "test": "jest"\n  },\n  "keywords": [],\n  "author": "Developer",\n  "license": "MIT",\n  "dependencies": {},\n  "devDependencies": {\n    "nodemon": "^3.0.0"\n  }\n}\n`,
+    '.gitignore': `# Dependencies\nnode_modules/\n__pycache__/\n*.pyc\nvenv/\n.venv/\n\n# Build output\ndist/\nbuild/\n*.egg-info/\n\n# Environment\n.env\n.env.local\n.env.*.local\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n\n# OS\n.DS_Store\nThumbs.db\n`,
+  };
+  Object.entries(sampleFiles).forEach(([path, content]) => {
+    state.files[path] = { content, lang: detectLang(path), modified: false };
+  });
+  document.getElementById('sidebar-project-name').textContent = 'MY-PROJECT';
+  renderFileTree();
+  openTab('README.md');
+  termWrite('Sample project loaded! 6 files ready.', 'info');
+  termWrite('Try: configure an AI model and ask it to explain main.py', 'info');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+termWrite('NativeIDE v1.0 ready.', 'info');
+termWrite('Type "help" for available commands.', 'info');
+loadConfigFromStorage();
+if (state.aiConfig.ollamaModel || state.aiConfig.openaiKey || state.aiConfig.anthropicKey) {
+  // Config was saved — mark as previously configured
+  const modelName = state.aiConfig.ollamaModel || state.aiConfig.openaiModel || state.aiConfig.anthropicModel || 'Model';
+  document.getElementById('ai-model-badge').textContent = modelName;
+  document.getElementById('header-model-name').textContent = modelName;
+}
+</script>
+</body>
+</html>
