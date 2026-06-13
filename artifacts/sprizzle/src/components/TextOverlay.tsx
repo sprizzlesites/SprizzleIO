@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Logo3D from "./SprizzleLogo";
 
 interface ZoneConfig {
   id: string;
@@ -15,6 +16,7 @@ interface ZoneConfig {
   position: { top?: string; bottom?: string; left?: string; right?: string };
   align: "left" | "center" | "right";
   maxWidth: string;
+  showLogo?: boolean;
   showCTA?: boolean;
 }
 
@@ -35,6 +37,7 @@ const zones: ZoneConfig[] = [
     position: { top: "14%", left: "50%" },
     align: "center",
     maxWidth: "420px",
+    showLogo: true,
   },
   {
     id: "grid",
@@ -186,13 +189,19 @@ function ZonePanel({ zone, scrollPct }: { zone: ZoneConfig; scrollPct: number })
           </span>
         </div>
 
-        {/* Title */}
-        <h2
-          className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight"
-          style={{ textShadow: "0 4px 20px rgba(0,0,0,0.6)" }}
-        >
-          {zone.title}
-        </h2>
+        {/* Title / Logo */}
+        {zone.showLogo ? (
+          <div className="flex justify-center mb-3">
+            <Logo3D size={120} scale={3.0} autoRotate={true} />
+          </div>
+        ) : (
+          <h2
+            className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight"
+            style={{ textShadow: "0 4px 20px rgba(0,0,0,0.6)" }}
+          >
+            {zone.title}
+          </h2>
+        )}
 
         {/* Description */}
         <p className="text-white/75 text-sm leading-relaxed mb-3">

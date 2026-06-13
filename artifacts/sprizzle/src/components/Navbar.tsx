@@ -1,26 +1,19 @@
 import { motion } from 'framer-motion';
+import Logo3D from './SprizzleLogo';
 
 export default function Navbar() {
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring" as const, stiffness: 100, damping: 20, delay: 0.2 }}
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 bg-white/5 backdrop-blur-[20px] border-b border-white/20 border-t border-t-white/40 shadow-[0_4px_30px_rgba(147,51,234,0.3)]"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 md:px-12 bg-white/5 backdrop-blur-[20px] border-b border-white/20 border-t border-t-white/40 shadow-[0_4px_30px_rgba(147,51,234,0.3)]"
       data-testid="navbar"
     >
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full aero-orb flex items-center justify-center text-white font-bold text-xl shadow-lg relative"
-             style={{
-               background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, hsl(272 60% 50%) 25%, hsl(225 70% 50%) 70%, hsl(272 90% 10%) 100%)',
-               boxShadow: '0 0 15px hsl(272 60% 50%), inset 0 0 15px rgba(255,255,255,0.8)'
-             }}
-        >
-          S
-        </div>
-        <span className="font-bold text-2xl tracking-tight text-white drop-shadow-md">Sprizzle</span>
+        <Logo3D size={48} scale={2.2} autoRotate={true} />
       </div>
-      
+
       <div className="hidden md:flex items-center gap-8 font-medium">
         <a href="#features" className="text-white/90 hover:text-white transition-all hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] relative group">
           Features
@@ -35,9 +28,9 @@ export default function Navbar() {
           <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-secondary to-accent group-hover:w-full transition-all duration-300"></span>
         </a>
       </div>
-      
+
       <div>
-        <button 
+        <button
           className="btn-aero px-6 py-2.5 rounded-full font-bold text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
           style={{
             background: 'linear-gradient(180deg, hsl(272 60% 60%), hsl(272 60% 40%))',

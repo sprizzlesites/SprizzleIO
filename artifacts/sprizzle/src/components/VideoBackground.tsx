@@ -1,8 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 export default function VideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -16,7 +12,7 @@ export default function VideoBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Create video element (hidden in DOM for decoding)
+    // Create hidden video element
     const video = document.createElement("video");
     video.src = "/scroll-bg.mp4";
     video.preload = "auto";
@@ -30,7 +26,7 @@ export default function VideoBackground() {
     document.body.appendChild(video);
     videoRef.current = video;
 
-    // Canvas sizing with DPR
+    // Canvas sizing
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let canvasW = 0;
     let canvasH = 0;
@@ -48,9 +44,12 @@ export default function VideoBackground() {
     };
     setCanvasSize();
 
-    // Smooth scroll progress state
-    const smooth = { current: 0 };
-    const target = { current: 0 };
+    // Scroll inertia physics
+    const rawScroll = { current: 0 };    // Instant scroll position
+    const smoothScroll = { current: 0 }; // Smooth position (velocity-driven)
+    const velocity = { current: 0 };     // Scroll momentum
+    const maxScroll = { current: 0 };    // Total scrollable height
+
     let isSeeking = false;
     let lastSeekTime = 0;
     let running = true;
@@ -82,49 +81,59 @@ export default function VideoBackground() {
       ctx.drawImage(video, sx, sy, sW, sH);
     };
 
-    // Animation loop: lerp + throttle + draw
+    // Track scroll velocity
+    const onScroll = () => {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      maxScroll.current = docHeight;
+      const newPos = window.scrollY / Math.max(docHeight, 1);
+      const delta = newPos - rawScroll.current;
+      velocity.current += delta * 0.35; // impulse from scroll delta
+      rawScroll.current = newPos;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Animation loop: physics + throttle + draw
     const loop = () => {
       if (!running) return;
 
-      // Smooth scroll progress with lerp
-      const diff = target.current - smooth.current;
-      smooth.current += diff * 0.12; // Lerp factor: higher = snappier, lower = smoother
-
-      // Update video time (throttled to avoid seek spam)
       const now = performance.now();
+
+      // Inertia physics: velocity decays with friction, glides to a stop
+      velocity.current *= 0.94; // Friction: higher = more glide, lower = snappier
+      if (Math.abs(velocity.current) < 0.00005) {
+        velocity.current = 0;
+      }
+
+      // Spring: smoothScroll is pulled toward rawScroll by the spring force
+      const springForce = (rawScroll.current - smoothScroll.current) * 0.06;
+      velocity.current += springForce;
+
+      // Apply velocity
+      smoothScroll.current += velocity.current;
+      smoothScroll.current = Math.max(0, Math.min(1, smoothScroll.current));
+
+      // Update video time (throttled)
       if (
         video.duration &&
         isFinite(video.duration) &&
         !isSeeking &&
-        now - lastSeekTime > 50 // Min 50ms between seeks
+        now - lastSeekTime > 40
       ) {
-        const targetTime = video.duration * smooth.current;
+        const targetTime = video.duration * smoothScroll.current;
         const timeDiff = Math.abs(video.currentTime - targetTime);
-        if (timeDiff > 0.03) { // 3 frame threshold at 24fps
+        if (timeDiff > 0.02) {
           isSeeking = true;
           lastSeekTime = now;
           video.currentTime = targetTime;
         }
       }
 
-      // Draw current frame
       drawVideo();
-
       rafId = requestAnimationFrame(loop);
     };
 
-    // ScrollTrigger drives target progress
-    const trigger = ScrollTrigger.create({
-      trigger: document.body,
-      start: "top top",
-      end: "bottom bottom",
-      scrub: true,
-      onUpdate: (self) => {
-        target.current = self.progress;
-      },
-    });
-
-    // Resize handler
+    // Resize
     const onResize = () => {
       setCanvasSize();
       drawVideo();
@@ -137,9 +146,6 @@ export default function VideoBackground() {
         setPosterVisible(false);
         setCanvasSize();
         drawVideo();
-        if (!rafId) {
-          rafId = requestAnimationFrame(loop);
-        }
       }
     };
 
@@ -153,14 +159,17 @@ export default function VideoBackground() {
     video.addEventListener("canplaythrough", onReady, { once: true });
     video.addEventListener("seeked", onSeeked);
 
-    // Fallback: start loop anyway
+    // Initialize scroll position
+    onScroll();
+    smoothScroll.current = rawScroll.current;
+
     rafId = requestAnimationFrame(loop);
 
     return () => {
       running = false;
       cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      trigger.kill();
       video.removeEventListener("seeked", onSeeked);
       if (video.parentNode) {
         video.parentNode.removeChild(video);
