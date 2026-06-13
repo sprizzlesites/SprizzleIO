@@ -133,7 +133,7 @@ function DesktopVideoBackground() {
   );
 }
 
-/* Mobile: canvas rendering with visible video element to wake decoder */
+/* Mobile: canvas + visible video element */
 function MobileVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -143,16 +143,8 @@ function MobileVideoBackground() {
     const canvas = canvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    // The video element is VISIBLE but behind the canvas.
-    // Mobile browsers need the video to be visible in the DOM
-    // for the decoder to initialize properly.
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let canvasW = 0;
@@ -177,7 +169,7 @@ function MobileVideoBackground() {
     let lastSeekTime = 0;
     let running = true;
     let rafId: number;
-    let decoderReady = false;
+    let decoderActive = false;
 
     const drawVideo = () => {
       if (!video || video.readyState < 2) return;
@@ -207,9 +199,9 @@ function MobileVideoBackground() {
       const now = performance.now();
       const lerp = 0.08;
       smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
-      if (decoderReady && video.duration && isFinite(video.duration) && !isSeeking && now - lastSeekTime > 50) {
+      if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking && now - lastSeekTime > 40) {
         const targetTime = video.duration * smoothScroll.current;
-        if (Math.abs(video.currentTime - targetTime) > 0.03) {
+        if (Math.abs(video.currentTime - targetTime) > 0.02) {
           isSeeking = true;
           lastSeekTime = now;
           video.currentTime = targetTime;
@@ -223,53 +215,46 @@ function MobileVideoBackground() {
 
     const onReady = () => {
       if (video.readyState >= 2) {
+        setPosterVisible(false);
         setCanvasSize();
         drawVideo();
       }
     };
 
-    // CRITICAL: On mobile, we must call play() to wake the decoder,
-    // wait for it to actually start, then pause. This is the only way
-    // to make seeking work. The video must be in the DOM and visible.
-    const initDecoder = () => {
-      onReady();
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
-          // Wait 100ms for decoder to actually start, then pause
-          setTimeout(() => {
-            video.pause();
-            decoderReady = true;
-            setPosterVisible(false);
-            onScroll();
-            smoothScroll.current = rawScroll.current;
-          }, 100);
-        }).catch(() => {
-          // Autoplay blocked — still try with seeking
-          decoderReady = true;
-          setPosterVisible(false);
-          onScroll();
-          smoothScroll.current = rawScroll.current;
-        });
-      } else {
-        decoderReady = true;
-        setPosterVisible(false);
-        onScroll();
-        smoothScroll.current = rawScroll.current;
-      }
-    };
-
     video.addEventListener("loadedmetadata", onReady, { once: true });
-    video.addEventListener("loadeddata", initDecoder, { once: true });
+    video.addEventListener("loadeddata", onReady, { once: true });
     video.addEventListener("canplaythrough", onReady, { once: true });
     video.addEventListener("seeked", onSeeked);
 
-    const onResize = () => { setCanvasSize(); drawVideo(); };
-    window.addEventListener("resize", onResize);
+    // Activate decoder: play() then set playbackRate = 0
+    // This keeps video in 'playing' state (decoder stays active)
+    const onGesture = () => {
+      if (decoderActive) return;
+      const p = video.play();
+      if (p !== undefined) {
+        p.then(() => {
+          video.playbackRate = 0;
+          decoderActive = true;
+        }).catch(() => {
+          // play() rejected — decoder still may be active
+          decoderActive = true;
+        });
+      } else {
+        video.play();
+        video.playbackRate = 0;
+        decoderActive = true;
+      }
+    };
+    window.addEventListener("touchstart", onGesture, { once: true, passive: true });
+    window.addEventListener("click", onGesture, { once: true });
+    window.addEventListener("wheel", onGesture, { once: true, passive: true });
 
     onScroll();
     smoothScroll.current = rawScroll.current;
     rafId = requestAnimationFrame(loop);
+
+    const onResize = () => { setCanvasSize(); drawVideo(); };
+    window.addEventListener("resize", onResize);
 
     return () => {
       running = false;
@@ -277,34 +262,28 @@ function MobileVideoBackground() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       video.removeEventListener("seeked", onSeeked);
-      video.pause();
-      video.src = "";
-      video.load();
     };
   }, []);
 
   return (
     <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
-      {/* Visible video element wakes the decoder */}
+      {/* Video element: visible in DOM but covered by canvas */}
       <video
         ref={videoRef}
-        src="/scroll-bg.mp4"
+        src="/scroll-bg-mobile.mp4"
         muted
         playsInline
         preload="auto"
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          top: 0, left: 0,
+          width: "100%", height: "100%",
           objectFit: "cover",
           zIndex: 0,
           pointerEvents: "none",
-          opacity: 0.01, // nearly invisible but visible enough for decoder
+          opacity: 0.01,
         }}
       />
-      {/* Canvas draws on top */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
