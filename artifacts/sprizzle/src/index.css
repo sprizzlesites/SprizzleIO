@@ -127,8 +127,11 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: linear-gradient(180deg, hsl(272 80% 15%) 0%, hsl(265 70% 25%) 50%, hsl(260 55% 40%) 100%);
-    background-attachment: fixed;
+    background: #0a0a0a;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 
