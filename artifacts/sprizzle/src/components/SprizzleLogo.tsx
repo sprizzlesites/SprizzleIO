@@ -3,7 +3,7 @@ import { useGLTF, Stage } from '@react-three/drei';
 import { Suspense, useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 
-const logoUrl = '/sprizzle-logo.glb';
+const logoUrl = `${import.meta.env.BASE_URL}sprizzle-logo.glb`;
 
 function LogoModel({
   scale = 1,
@@ -151,4 +151,4 @@ export default function Logo3D({
   );
 }
 
-useGLTF.preload(logoUrl);
+useGLTF.preload(`${import.meta.env.BASE_URL}sprizzle-logo.glb`);

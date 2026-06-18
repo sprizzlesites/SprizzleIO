@@ -13,7 +13,7 @@ function DesktopVideoBackground() {
     if (!ctx) return;
 
     const video = document.createElement("video");
-    video.src = "/scroll-bg.mp4";
+    video.src = `${import.meta.env.BASE_URL}scroll-bg.mp4`;
     video.preload = "auto";
     video.muted = true;
     video.playsInline = true;
@@ -127,7 +127,7 @@ function DesktopVideoBackground() {
     <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ pointerEvents: "none" }} />
       {posterVisible && (
-        <img src="/poster.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" style={{ pointerEvents: "none" }} />
+        <img src={`${import.meta.env.BASE_URL}poster.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ pointerEvents: "none" }} />
       )}
     </div>
   );
@@ -270,7 +270,7 @@ function MobileVideoBackground() {
       {/* Video element: visible in DOM but covered by canvas */}
       <video
         ref={videoRef}
-        src="/scroll-bg-mobile.mp4"
+        src={`${import.meta.env.BASE_URL}scroll-bg-mobile.mp4`}
         muted
         playsInline
         preload="auto"
@@ -291,7 +291,7 @@ function MobileVideoBackground() {
       />
       {posterVisible && (
         <img
-          src="/poster.jpg"
+          src={`${import.meta.env.BASE_URL}poster.jpg`}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
           style={{ pointerEvents: "none", zIndex: 2 }}
