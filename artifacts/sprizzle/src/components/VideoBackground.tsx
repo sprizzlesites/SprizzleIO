@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
-// requestVideoFrameCallback is not in all TS libs yet
-type VideoFrameCallback = (now: number, metadata: unknown) => void;
-interface VideoWithRVFC extends HTMLVideoElement {
-  requestVideoFrameCallback?: (cb: VideoFrameCallback) => number;
-  cancelVideoFrameCallback?: (id: number) => void;
+function drawBitmap(
+  bitmap: ImageBitmap,
+  ctx: CanvasRenderingContext2D,
+  canvasW: number,
+  canvasH: number,
+) {
+  const vAspect = bitmap.width / bitmap.height;
+  const cAspect = canvasW / canvasH;
+  let sx: number, sy: number, sW: number, sH: number;
+  if (cAspect > vAspect) {
+    sW = canvasW; sH = canvasW / vAspect; sx = 0; sy = (canvasH - sH) / 2;
+  } else {
+    sH = canvasH; sW = canvasH * vAspect; sx = (canvasW - sW) / 2; sy = 0;
+  }
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.drawImage(bitmap, sx, sy, sW, sH);
 }
 
 function drawFrame(
@@ -37,7 +48,15 @@ function isBufferedAt(video: HTMLVideoElement, pct: number): boolean {
   return false;
 }
 
-/* Desktop: canvas-based rendering from hidden video */
+async function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
+  return new Promise((resolve) => {
+    const onSeeked = () => { video.removeEventListener("seeked", onSeeked); resolve(); };
+    video.addEventListener("seeked", onSeeked);
+    video.currentTime = time;
+  });
+}
+
+/* Desktop: pre-cache all frames as ImageBitmaps, then scrub from array */
 function DesktopVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [posterVisible, setPosterVisible] = useState(true);
@@ -48,7 +67,7 @@ function DesktopVideoBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const video = document.createElement("video") as VideoWithRVFC;
+    const video = document.createElement("video");
     video.src = `${import.meta.env.BASE_URL}scroll-bg.mp4`;
     video.preload = "auto";
     video.muted = true;
@@ -56,7 +75,7 @@ function DesktopVideoBackground() {
     video.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;width:1px;height:1px";
     document.body.appendChild(video);
 
-    const dpr = 1; // DPR 1 — video content gains nothing from 2x fill cost
+    const dpr = 1;
     let canvasW = 0;
     let canvasH = 0;
 
@@ -73,11 +92,11 @@ function DesktopVideoBackground() {
 
     const rawScroll = { current: 0 };
     const smoothScroll = { current: 0 };
-    let isSeeking = false;
-    let decoderActive = false;
+    const frames: ImageBitmap[] = [];
+    let scrubEnabled = false;
     let running = true;
     let rafId: number;
-    let rvfcId: number | undefined;
+    let aborted = false;
 
     const onScroll = () => {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
@@ -85,93 +104,86 @@ function DesktopVideoBackground() {
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
-    // Draw via requestVideoFrameCallback when available (fires on actual decoded frame)
-    // Falls back to drawing in the seeked handler
-    const scheduleFrameDraw = () => {
-      if (video.requestVideoFrameCallback) {
-        rvfcId = video.requestVideoFrameCallback(() => {
-          drawFrame(video, ctx, canvasW, canvasH);
-        });
-      } else {
-        drawFrame(video, ctx, canvasW, canvasH);
-      }
-    };
+    const onResize = () => { setCanvasSize(); };
+    window.addEventListener("resize", onResize);
 
-    const onSeeked = () => {
-      isSeeking = false;
-      if (!video.requestVideoFrameCallback) {
-        drawFrame(video, ctx, canvasW, canvasH);
-      }
-    };
-    video.addEventListener("seeked", onSeeked);
-
+    // RAF loop: once scrubbing is enabled, draw from the cached frame array
     const loop = () => {
       if (!running) return;
       const lerp = 0.08;
       smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
-
-      if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
-        const targetTime = video.duration * smoothScroll.current;
-        if (Math.abs(video.currentTime - targetTime) > 0.02) {
-          isSeeking = true;
-          video.currentTime = targetTime;
-          scheduleFrameDraw();
-        }
+      if (scrubEnabled && frames.length > 0) {
+        const idx = Math.round(smoothScroll.current * (frames.length - 1));
+        const bitmap = frames[Math.min(idx, frames.length - 1)];
+        if (bitmap) drawBitmap(bitmap, ctx, canvasW, canvasH);
       }
       rafId = requestAnimationFrame(loop);
     };
 
-    const onResize = () => { setCanvasSize(); drawFrame(video, ctx, canvasW, canvasH); };
-    window.addEventListener("resize", onResize);
+    // Capture pass: seek to each frame time, grab an ImageBitmap
+    const FRAME_COUNT = 120;
+    const captureFrames = async () => {
+      if (!video.duration || !isFinite(video.duration)) return;
 
-    // Wait for 10% of video to buffer before enabling scrub — prevents stalls into unbuffered regions
+      const captureW = Math.min(Math.round(window.innerWidth), 960);
+      const captureH = Math.round(captureW / (video.videoWidth / video.videoHeight));
+
+      for (let i = 0; i < FRAME_COUNT; i++) {
+        if (aborted) break;
+        const t = (i / (FRAME_COUNT - 1)) * video.duration;
+        await seekTo(video, t);
+        if (aborted) break;
+        try {
+          // createImageBitmap resize is supported in Chrome/Edge; Firefox ignores it (fine)
+          const bitmap = await createImageBitmap(video, { resizeWidth: captureW, resizeHeight: captureH });
+          frames.push(bitmap);
+        } catch {
+          // Fallback: capture at native resolution
+          const bitmap = await createImageBitmap(video);
+          frames.push(bitmap);
+        }
+
+        // Progressive unlock: start scrubbing after first 30 frames
+        if (frames.length === 30) {
+          setPosterVisible(false);
+          scrubEnabled = true;
+        }
+      }
+    };
+
+    // Wait for enough buffering before starting the capture pass
+    const startCapture = () => {
+      onScroll();
+      smoothScroll.current = rawScroll.current;
+      rafId = requestAnimationFrame(loop);
+      captureFrames();
+    };
+
+    const onCanPlayThrough = () => startCapture();
     const onProgress = () => {
-      if (!video.duration) return;
-      if (isBufferedAt(video, 0.1)) {
-        setPosterVisible(false);
-        drawFrame(video, ctx, canvasW, canvasH);
+      if (video.duration && isBufferedAt(video, 0.5)) {
         video.removeEventListener("progress", onProgress);
+        startCapture();
       }
     };
-    const onCanPlay = () => {
-      setPosterVisible(false);
-      drawFrame(video, ctx, canvasW, canvasH);
-    };
+
+    video.addEventListener("canplaythrough", onCanPlayThrough, { once: true });
     video.addEventListener("progress", onProgress);
-    video.addEventListener("canplaythrough", onCanPlay, { once: true });
-
-    // Warm the decoder on first gesture (same trick as mobile)
-    const activateDecoder = () => {
-      if (decoderActive) return;
-      const p = video.play();
-      if (p !== undefined) {
-        p.then(() => { video.playbackRate = 0; decoderActive = true; })
-         .catch(() => { decoderActive = true; });
-      } else {
-        video.playbackRate = 0;
-        decoderActive = true;
-      }
-    };
-    window.addEventListener("wheel", activateDecoder, { once: true, passive: true });
-    window.addEventListener("touchstart", activateDecoder, { once: true, passive: true });
-    window.addEventListener("click", activateDecoder, { once: true });
-
-    onScroll();
-    smoothScroll.current = rawScroll.current;
-    rafId = requestAnimationFrame(loop);
 
     return () => {
+      aborted = true;
       running = false;
       cancelAnimationFrame(rafId);
-      if (rvfcId !== undefined && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(rvfcId);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onProgress);
+      video.removeEventListener("canplaythrough", onCanPlayThrough);
       if (video.parentNode) video.parentNode.removeChild(video);
       video.pause();
       video.src = "";
       video.load();
+      // Free GPU memory
+      frames.forEach((b) => b.close());
     };
   }, []);
 
@@ -185,7 +197,7 @@ function DesktopVideoBackground() {
   );
 }
 
-/* Mobile: canvas + visible video element */
+/* Mobile: canvas + visible video element (unchanged — working well) */
 function MobileVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -193,7 +205,7 @@ function MobileVideoBackground() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const video = videoRef.current as VideoWithRVFC | null;
+    const video = videoRef.current;
     if (!canvas || !video) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -219,7 +231,6 @@ function MobileVideoBackground() {
     let decoderActive = false;
     let running = true;
     let rafId: number;
-    let rvfcId: number | undefined;
 
     const onScroll = () => {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
@@ -227,21 +238,9 @@ function MobileVideoBackground() {
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
-    const scheduleFrameDraw = () => {
-      if (video.requestVideoFrameCallback) {
-        rvfcId = video.requestVideoFrameCallback(() => {
-          drawFrame(video, ctx, canvasW, canvasH);
-        });
-      } else {
-        drawFrame(video, ctx, canvasW, canvasH);
-      }
-    };
-
     const onSeeked = () => {
       isSeeking = false;
-      if (!video.requestVideoFrameCallback) {
-        drawFrame(video, ctx, canvasW, canvasH);
-      }
+      drawFrame(video, ctx, canvasW, canvasH);
     };
     video.addEventListener("seeked", onSeeked);
 
@@ -249,13 +248,11 @@ function MobileVideoBackground() {
       if (!running) return;
       const lerp = 0.08;
       smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
-
       if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
         const targetTime = video.duration * smoothScroll.current;
         if (Math.abs(video.currentTime - targetTime) > 0.02) {
           isSeeking = true;
           video.currentTime = targetTime;
-          scheduleFrameDraw();
         }
       }
       rafId = requestAnimationFrame(loop);
@@ -302,7 +299,6 @@ function MobileVideoBackground() {
     return () => {
       running = false;
       cancelAnimationFrame(rafId);
-      if (rvfcId !== undefined && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(rvfcId);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       video.removeEventListener("seeked", onSeeked);
