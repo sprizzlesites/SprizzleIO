@@ -36,11 +36,8 @@ jobs:
         working-directory: artifacts/sprizzle
         env:
           NODE_ENV: production
-          BASE_PATH: /
+          BASE_PATH: /SprizzleIO/
         run: pnpm run build
-
-      - name: Add CNAME for custom domain
-        run: echo "sprizzle.io" > artifacts/sprizzle/dist/public/CNAME
 
       - name: Add 404 fallback for SPA routing
         run: cp artifacts/sprizzle/dist/public/index.html artifacts/sprizzle/dist/public/404.html
