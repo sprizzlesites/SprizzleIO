@@ -87,7 +87,7 @@ function DesktopVideoBackground() {
     // Slower lerp than mobile for a more cinematic desktop feel
     const loop = () => {
       if (!running) return;
-      smoothScroll.current = smoothScroll.current * 0.82 + rawScroll.current * 0.18;
+      smoothScroll.current = smoothScroll.current * 0.6 + rawScroll.current * 0.4;
       if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
         const targetTime = video.duration * smoothScroll.current;
         if (Math.abs(video.currentTime - targetTime) > 0.02) {
