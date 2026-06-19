@@ -14,7 +14,7 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 // Zone peak percentages — where each room "fully arrives"
 const SNAP_TARGETS = [0, 30, 55, 75, 93];
-const SNAP_DELAY_MS = 450;
+const SNAP_DELAY_MS = 180;
 
 function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
@@ -54,8 +54,8 @@ function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
         snapActive = true;
         gsap.to(c, {
           scrollTo: { y: targetY },
-          duration: 0.9,
-          ease: "power3.out",
+          duration: 0.5,
+          ease: "power2.out",
           onComplete: () => { snapActive = false; },
         });
       }, SNAP_DELAY_MS);
