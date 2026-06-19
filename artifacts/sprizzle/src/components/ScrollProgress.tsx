@@ -13,7 +13,7 @@ const zones: Zone[] = [
   { label: "The Grid", start: 20, end: 45, color: "#44ff88" },
   { label: "The Canvas", start: 50, end: 67, color: "#ffaa33" },
   { label: "The Fortress", start: 70, end: 80, color: "#ff3333" },
-  { label: "The Nexus", start: 83, end: 100, color: "#cc55ff" },
+  { label: "The Nexus", start: 85, end: 100, color: "#cc55ff" },
 ];
 
 function getCurrentZone(pct: number): Zone | null {
