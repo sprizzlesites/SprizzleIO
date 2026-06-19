@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Route } from "wouter";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import VideoBackground from "./components/VideoBackground";
 import TextOverlay from "./components/TextOverlay";
 import Navbar from "./components/Navbar";
@@ -9,7 +10,102 @@ import ScrollProgress from "./components/ScrollProgress";
 import IDEPage from "./pages/IDEPage";
 import { ScrollContext } from "./ScrollContext";
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+// Zone peak percentages — where each room "fully arrives"
+const SNAP_TARGETS = [0, 25, 50, 70, 85];
+const SNAP_DELAY_MS = 450;
+
+function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let lastScrollTop = 0;
+    let scrollDir = 1;
+    let snapActive = false;
+
+    const getSnapTarget = (currentPct: number, dir: number): number => {
+      if (dir > 0) {
+        // Scrolling down: nearest target at or ahead of current position
+        const next = SNAP_TARGETS.find((t) => t > currentPct + 1);
+        return next ?? SNAP_TARGETS[SNAP_TARGETS.length - 1];
+      } else {
+        // Scrolling up: nearest target at or behind current position
+        const prev = [...SNAP_TARGETS].reverse().find((t) => t < currentPct - 1);
+        return prev ?? SNAP_TARGETS[0];
+      }
+    };
+
+    const onScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Kill any active snap tween so user retakes control
+      if (snapActive) {
+        gsap.killTweensOf(container);
+        snapActive = false;
+      }
+
+      scrollDir = container.scrollTop > lastScrollTop ? 1 : -1;
+      lastScrollTop = container.scrollTop;
+
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const c = containerRef.current;
+        if (!c) return;
+        const scrollableH = c.scrollHeight - c.clientHeight;
+        if (scrollableH <= 0) return;
+        const currentPct = (c.scrollTop / scrollableH) * 100;
+        const targetPct = getSnapTarget(currentPct, scrollDir);
+        const targetY = (targetPct / 100) * scrollableH;
+
+        snapActive = true;
+        gsap.to(c, {
+          scrollTo: { y: targetY },
+          duration: 0.9,
+          ease: "power3.out",
+          onComplete: () => { snapActive = false; },
+        });
+      }, SNAP_DELAY_MS);
+    };
+
+    const attach = (container: HTMLDivElement) => {
+      container.addEventListener("scroll", onScroll, { passive: true });
+    };
+    const detach = (container: HTMLDivElement) => {
+      container.removeEventListener("scroll", onScroll);
+      clearTimeout(timeoutId);
+      gsap.killTweensOf(container);
+    };
+
+    let activeContainer: HTMLDivElement | null = null;
+
+    const sync = () => {
+      const isDesktop = window.innerWidth >= 768;
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (isDesktop && activeContainer !== container) {
+        if (activeContainer) detach(activeContainer);
+        attach(container);
+        activeContainer = container;
+      } else if (!isDesktop && activeContainer) {
+        detach(activeContainer);
+        activeContainer = null;
+      }
+    };
+
+    // Wait one tick for the ref to be populated
+    const initId = setTimeout(sync, 0);
+    window.addEventListener("resize", sync);
+
+    return () => {
+      clearTimeout(initId);
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", sync);
+      if (activeContainer) detach(activeContainer);
+    };
+  }, [containerRef]);
+}
 
 function HomePage() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -20,6 +116,8 @@ function HomePage() {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  useScrollSnap(scrollRef);
 
   return (
     <ScrollContext value={scrollRef}>
