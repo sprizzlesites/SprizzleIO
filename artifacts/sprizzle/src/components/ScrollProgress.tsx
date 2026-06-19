@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { ScrollContext } from "../ScrollContext";
 
 interface Zone {
   label: string;
@@ -26,24 +27,27 @@ function getCurrentZone(pct: number): Zone | null {
 export default function ScrollProgress() {
   const [progress, setProgress] = useState(0);
   const [zone, setZone] = useState<Zone | null>(zones[0]);
+  const scrollContainer = useContext(ScrollContext);
 
   useEffect(() => {
+    const container = scrollContainer.current;
+    if (!container) return;
+
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollTop = container.scrollTop;
+      const docHeight = container.scrollHeight - container.clientHeight;
       const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       setProgress(Math.min(pct, 100));
       setZone(getCurrentZone(pct));
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    container.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [scrollContainer]);
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[60] pointer-events-none">
-      {/* Progress bar */}
       <div className="w-full h-1.5 bg-black/40 backdrop-blur-sm">
         <div
           className="h-full transition-all duration-75 ease-out"
@@ -58,7 +62,6 @@ export default function ScrollProgress() {
           }}
         />
       </div>
-      {/* Zone indicator */}
       <div className="flex justify-center mt-2">
         <div
           className="px-4 py-1 text-xs font-bold tracking-widest uppercase text-white/90"
