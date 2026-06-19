@@ -31,42 +31,20 @@ function isBufferedAt(video: HTMLVideoElement, pct: number): boolean {
   return false;
 }
 
-/* Desktop: hidden video element, canvas rendering, live seeking */
+/* Desktop: native video element (zero-copy compositor path), live seeking */
 function DesktopVideoBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [posterVisible, setPosterVisible] = useState(true);
   const scrollContainer = useContext(ScrollContext);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const video = videoRef.current;
     const container = scrollContainer.current;
-    if (!canvas || !container) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const video = document.createElement("video");
-    video.src = `${import.meta.env.BASE_URL}scroll-bg.mp4`;
-    video.preload = "auto";
-    video.muted = true;
-    video.playsInline = true;
-    video.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;width:1px;height:1px";
-    document.body.appendChild(video);
-
-    let canvasW = 0;
-    let canvasH = 0;
-
-    const setCanvasSize = () => {
-      canvasW = container.clientWidth;
-      canvasH = container.clientHeight;
-      canvas.width = canvasW;
-      canvas.height = canvasH;
-      canvas.style.width = `${canvasW}px`;
-      canvas.style.height = `${canvasH}px`;
-    };
-    setCanvasSize();
+    if (!video || !container) return;
 
     const rawScroll = { current: 0 };
     const smoothScroll = { current: 0 };
+    const prevRaw = { current: 0 };
     let isSeeking = false;
     let stallTimer: ReturnType<typeof setTimeout> | undefined;
     let decoderActive = false;
@@ -82,39 +60,48 @@ function DesktopVideoBackground() {
     const onSeeked = () => {
       if (stallTimer !== undefined) clearTimeout(stallTimer);
       isSeeking = false;
-      drawFrame(video, ctx, canvasW, canvasH);
     };
     video.addEventListener("seeked", onSeeked);
 
     const loop = () => {
       if (!running) return;
+
+      const rawDelta = Math.abs(rawScroll.current - prevRaw.current);
+      prevRaw.current = rawScroll.current;
       smoothScroll.current = smoothScroll.current * 0.6 + rawScroll.current * 0.4;
+
       if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
         const targetTime = video.duration * smoothScroll.current;
-        if (Math.abs(video.currentTime - targetTime) > 0.02) {
+        let seekTarget = targetTime;
+
+        if (rawDelta < 0.008) {
+          // Manual scroll: step at most one video frame toward target
+          const maxStep = video.duration / 30;
+          const diff = targetTime - video.currentTime;
+          if (Math.abs(diff) > maxStep) {
+            seekTarget = video.currentTime + Math.sign(diff) * maxStep;
+          }
+        }
+
+        if (Math.abs(video.currentTime - seekTarget) > 0.02) {
           isSeeking = true;
-          // Unstick the flag if seeked never fires (slow decoder / background tab)
           stallTimer = setTimeout(() => { isSeeking = false; }, 80);
-          video.currentTime = targetTime;
+          video.currentTime = seekTarget;
         }
       }
       rafId = requestAnimationFrame(loop);
     };
 
+    const showVideo = () => setPosterVisible(false);
     const onProgress = () => {
       if (!video.duration) return;
       if (isBufferedAt(video, 0.1)) {
-        setPosterVisible(false);
-        drawFrame(video, ctx, canvasW, canvasH);
+        showVideo();
         video.removeEventListener("progress", onProgress);
       }
     };
-    const onCanPlay = () => {
-      setPosterVisible(false);
-      drawFrame(video, ctx, canvasW, canvasH);
-    };
     video.addEventListener("progress", onProgress);
-    video.addEventListener("canplaythrough", onCanPlay, { once: true });
+    video.addEventListener("canplaythrough", showVideo, { once: true });
 
     const activateDecoder = () => {
       if (decoderActive) return;
@@ -134,18 +121,13 @@ function DesktopVideoBackground() {
     smoothScroll.current = rawScroll.current;
     rafId = requestAnimationFrame(loop);
 
-    const onResize = () => { setCanvasSize(); drawFrame(video, ctx, canvasW, canvasH); };
-    window.addEventListener("resize", onResize);
-
     return () => {
       running = false;
       cancelAnimationFrame(rafId);
       if (stallTimer !== undefined) clearTimeout(stallTimer);
       container.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
       video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onProgress);
-      if (video.parentNode) video.parentNode.removeChild(video);
       video.pause();
       video.src = "";
       video.load();
@@ -154,9 +136,30 @@ function DesktopVideoBackground() {
 
   return (
     <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ pointerEvents: "none" }} />
+      <video
+        ref={videoRef}
+        src={`${import.meta.env.BASE_URL}scroll-bg.mp4`}
+        muted
+        playsInline
+        preload="auto"
+        style={{
+          position: "fixed",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          pointerEvents: "none",
+          opacity: posterVisible ? 0 : 1,
+          transition: "opacity 0.3s ease",
+        }}
+      />
       {posterVisible && (
-        <img src={`${import.meta.env.BASE_URL}poster.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ pointerEvents: "none" }} />
+        <img
+          src={`${import.meta.env.BASE_URL}poster.jpg`}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ pointerEvents: "none" }}
+        />
       )}
     </div>
   );
