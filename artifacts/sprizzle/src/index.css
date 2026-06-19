@@ -5,6 +5,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

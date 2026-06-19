@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { ScrollContext } from "../ScrollContext";
 import Logo3D from "./SprizzleLogo";
 
 interface ZoneConfig {
@@ -330,28 +331,32 @@ export default function TextOverlay() {
   const [scrollPct, setScrollPct] = useState(0);
   const rafRef = useRef<number>(0);
   const lastScrollRef = useRef(0);
+  const scrollContainer = useContext(ScrollContext);
 
   useEffect(() => {
+    const container = scrollContainer.current;
+    if (!container) return;
+
     const handleScroll = () => {
-      lastScrollRef.current = window.scrollY;
+      lastScrollRef.current = container.scrollTop;
     };
 
     const loop = () => {
       const scrollTop = lastScrollRef.current;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight = container.scrollHeight - container.clientHeight;
       const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       setScrollPct(Math.min(pct, 100));
       rafRef.current = requestAnimationFrame(loop);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    container.addEventListener("scroll", handleScroll, { passive: true });
     rafRef.current = requestAnimationFrame(loop);
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      container.removeEventListener("scroll", handleScroll);
       cancelAnimationFrame(rafRef.current);
     };
-  }, []);
+  }, [scrollContainer]);
 
   return (
     <div className="relative z-10 mobile-scroll-container" style={{ height: "5000px" }}>

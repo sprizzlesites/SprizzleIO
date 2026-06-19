@@ -7,11 +7,12 @@ import TextOverlay from "./components/TextOverlay";
 import Navbar from "./components/Navbar";
 import ScrollProgress from "./components/ScrollProgress";
 import IDEPage from "./pages/IDEPage";
+import { ScrollContext } from "./ScrollContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
 function HomePage() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -21,12 +22,22 @@ function HomePage() {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative" style={{ backgroundColor: "#0a0a0a", minHeight: "100dvh" }}>
-      <VideoBackground />
-      <ScrollProgress />
-      <Navbar />
-      <TextOverlay />
-    </div>
+    <ScrollContext value={scrollRef}>
+      <div
+        ref={scrollRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          overflowY: "scroll",
+          backgroundColor: "#0a0a0a",
+        }}
+      >
+        <VideoBackground />
+        <ScrollProgress />
+        <Navbar />
+        <TextOverlay />
+      </div>
+    </ScrollContext>
   );
 }
 

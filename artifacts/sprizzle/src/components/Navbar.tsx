@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
 import Logo3D from './SprizzleLogo';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+import { ScrollContext } from '../ScrollContext';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
@@ -20,19 +21,10 @@ const sections: SectionLink[] = [
   { label: "The Nexus", pct: 85 },
 ];
 
-function smoothScrollToPct(pct: number) {
-  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-  const targetY = (pct / 100) * docHeight;
-  gsap.to(window, {
-    duration: 1.2,
-    scrollTo: { y: targetY },
-    ease: "power2.inOut",
-  });
-}
-
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const scrollContainer = useContext(ScrollContext);
 
   useEffect(() => {
     setMounted(true);
@@ -40,12 +32,26 @@ export default function Navbar() {
 
   // Close menu on scroll
   useEffect(() => {
+    const container = scrollContainer.current;
+    if (!container) return;
     const onScroll = () => {
       if (menuOpen) setMenuOpen(false);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [menuOpen]);
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [menuOpen, scrollContainer]);
+
+  const smoothScrollToPct = (pct: number) => {
+    const container = scrollContainer.current;
+    if (!container) return;
+    const docHeight = container.scrollHeight - container.clientHeight;
+    const targetY = (pct / 100) * docHeight;
+    gsap.to(container, {
+      duration: 1.2,
+      scrollTo: { y: targetY },
+      ease: "power2.inOut",
+    });
+  };
 
   const handleClick = (pct: number) => {
     setMenuOpen(false);

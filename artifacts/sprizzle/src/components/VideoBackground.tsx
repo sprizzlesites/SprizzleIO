@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { ScrollContext } from "../ScrollContext";
 
 function drawBitmap(
   bitmap: ImageBitmap,
@@ -60,10 +61,12 @@ async function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
 function DesktopVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [posterVisible, setPosterVisible] = useState(true);
+  const scrollContainer = useContext(ScrollContext);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = scrollContainer.current;
+    if (!canvas || !container) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -80,8 +83,8 @@ function DesktopVideoBackground() {
     let canvasH = 0;
 
     const setCanvasSize = () => {
-      canvasW = window.innerWidth;
-      canvasH = window.innerHeight;
+      canvasW = container.clientWidth;
+      canvasH = container.clientHeight;
       canvas.width = canvasW * dpr;
       canvas.height = canvasH * dpr;
       canvas.style.width = `${canvasW}px`;
@@ -99,33 +102,31 @@ function DesktopVideoBackground() {
     let aborted = false;
 
     const onScroll = () => {
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      rawScroll.current = window.scrollY / Math.max(docHeight, 1);
+      const docHeight = container.scrollHeight - container.clientHeight;
+      rawScroll.current = container.scrollTop / Math.max(docHeight, 1);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    container.addEventListener("scroll", onScroll, { passive: true });
 
     const onResize = () => { setCanvasSize(); };
     window.addEventListener("resize", onResize);
 
-    // RAF loop: once scrubbing is enabled, draw from the cached frame array
+    const FRAME_COUNT = 120;
+
     const loop = () => {
       if (!running) return;
       const lerp = 0.08;
       smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
       if (scrubEnabled && frames.length > 0) {
-        const idx = Math.round(smoothScroll.current * (frames.length - 1));
+        const idx = Math.round(smoothScroll.current * (FRAME_COUNT - 1));
         const bitmap = frames[Math.min(idx, frames.length - 1)];
         if (bitmap) drawBitmap(bitmap, ctx, canvasW, canvasH);
       }
       rafId = requestAnimationFrame(loop);
     };
 
-    // Capture pass: seek to each frame time, grab an ImageBitmap
-    const FRAME_COUNT = 120;
     const captureFrames = async () => {
       if (!video.duration || !isFinite(video.duration)) return;
-
-      const captureW = Math.min(Math.round(window.innerWidth), 960);
+      const captureW = Math.min(Math.round(container.clientWidth), 960);
       const captureH = Math.round(captureW / (video.videoWidth / video.videoHeight));
 
       for (let i = 0; i < FRAME_COUNT; i++) {
@@ -134,24 +135,21 @@ function DesktopVideoBackground() {
         await seekTo(video, t);
         if (aborted) break;
         try {
-          // createImageBitmap resize is supported in Chrome/Edge; Firefox ignores it (fine)
           const bitmap = await createImageBitmap(video, { resizeWidth: captureW, resizeHeight: captureH });
           frames.push(bitmap);
         } catch {
-          // Fallback: capture at native resolution
           const bitmap = await createImageBitmap(video);
           frames.push(bitmap);
         }
+      }
 
-        // Progressive unlock: start scrubbing after first 30 frames
-        if (frames.length === 30) {
-          setPosterVisible(false);
-          scrubEnabled = true;
-        }
+      // Only enable scrubbing after ALL frames are captured — avoids partial-video bug
+      if (!aborted) {
+        setPosterVisible(false);
+        scrubEnabled = true;
       }
     };
 
-    // Wait for enough buffering before starting the capture pass
     const startCapture = () => {
       onScroll();
       smoothScroll.current = rawScroll.current;
@@ -174,7 +172,7 @@ function DesktopVideoBackground() {
       aborted = true;
       running = false;
       cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
+      container.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       video.removeEventListener("progress", onProgress);
       video.removeEventListener("canplaythrough", onCanPlayThrough);
@@ -182,10 +180,9 @@ function DesktopVideoBackground() {
       video.pause();
       video.src = "";
       video.load();
-      // Free GPU memory
       frames.forEach((b) => b.close());
     };
-  }, []);
+  }, [scrollContainer]);
 
   return (
     <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
@@ -197,16 +194,18 @@ function DesktopVideoBackground() {
   );
 }
 
-/* Mobile: canvas + visible video element (unchanged — working well) */
+/* Mobile: canvas + visible video element */
 function MobileVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [posterVisible, setPosterVisible] = useState(true);
+  const scrollContainer = useContext(ScrollContext);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    if (!canvas || !video) return;
+    const container = scrollContainer.current;
+    if (!canvas || !video || !container) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -215,8 +214,8 @@ function MobileVideoBackground() {
     let canvasH = 0;
 
     const setCanvasSize = () => {
-      canvasW = window.innerWidth;
-      canvasH = window.innerHeight;
+      canvasW = container.clientWidth;
+      canvasH = container.clientHeight;
       canvas.width = canvasW * dpr;
       canvas.height = canvasH * dpr;
       canvas.style.width = `${canvasW}px`;
@@ -233,10 +232,10 @@ function MobileVideoBackground() {
     let rafId: number;
 
     const onScroll = () => {
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      rawScroll.current = window.scrollY / Math.max(docHeight, 1);
+      const docHeight = container.scrollHeight - container.clientHeight;
+      rawScroll.current = container.scrollTop / Math.max(docHeight, 1);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    container.addEventListener("scroll", onScroll, { passive: true });
 
     const onSeeked = () => {
       isSeeking = false;
@@ -285,9 +284,9 @@ function MobileVideoBackground() {
         decoderActive = true;
       }
     };
-    window.addEventListener("touchstart", onGesture, { once: true, passive: true });
-    window.addEventListener("click", onGesture, { once: true });
-    window.addEventListener("wheel", onGesture, { once: true, passive: true });
+    container.addEventListener("touchstart", onGesture, { once: true, passive: true });
+    container.addEventListener("click", onGesture, { once: true });
+    container.addEventListener("wheel", onGesture, { once: true, passive: true });
 
     onScroll();
     smoothScroll.current = rawScroll.current;
@@ -299,12 +298,12 @@ function MobileVideoBackground() {
     return () => {
       running = false;
       cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
+      container.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onProgress);
     };
-  }, []);
+  }, [scrollContainer]);
 
   return (
     <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
