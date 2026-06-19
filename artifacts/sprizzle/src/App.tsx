@@ -13,7 +13,7 @@ import { ScrollContext } from "./ScrollContext";
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 // Zone peak percentages — where each room "fully arrives"
-const SNAP_TARGETS = [0, 30, 58, 75, 93];
+const SNAP_TARGETS = [0, 30, 60, 75, 93];
 const SNAP_DELAY_MS = 180;
 
 function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
