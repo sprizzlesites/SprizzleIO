@@ -15,9 +15,9 @@ interface SectionLink {
 
 const sections: SectionLink[] = [
   { label: "Portal", pct: 0 },
-  { label: "The Grid", pct: 25 },
+  { label: "The Grid", pct: 30 },
   { label: "The Canvas", pct: 50 },
-  { label: "The Fortress", pct: 60 },
+  { label: "The Fortress", pct: 70 },
   { label: "The Nexus", pct: 90 },
 ];
 
