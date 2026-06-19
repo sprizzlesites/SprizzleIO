@@ -1,24 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { ScrollContext } from "../ScrollContext";
 
-function drawBitmap(
-  bitmap: ImageBitmap,
-  ctx: CanvasRenderingContext2D,
-  canvasW: number,
-  canvasH: number,
-) {
-  const vAspect = bitmap.width / bitmap.height;
-  const cAspect = canvasW / canvasH;
-  let sx: number, sy: number, sW: number, sH: number;
-  if (cAspect > vAspect) {
-    sW = canvasW; sH = canvasW / vAspect; sx = 0; sy = (canvasH - sH) / 2;
-  } else {
-    sH = canvasH; sW = canvasH * vAspect; sx = (canvasW - sW) / 2; sy = 0;
-  }
-  ctx.clearRect(0, 0, canvasW, canvasH);
-  ctx.drawImage(bitmap, sx, sy, sW, sH);
-}
-
 function drawFrame(
   video: HTMLVideoElement,
   ctx: CanvasRenderingContext2D,
@@ -49,15 +31,7 @@ function isBufferedAt(video: HTMLVideoElement, pct: number): boolean {
   return false;
 }
 
-async function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
-  return new Promise((resolve) => {
-    const onSeeked = () => { video.removeEventListener("seeked", onSeeked); resolve(); };
-    video.addEventListener("seeked", onSeeked);
-    video.currentTime = time;
-  });
-}
-
-/* Desktop: pre-cache all frames as ImageBitmaps, then scrub from array */
+/* Desktop: hidden video element, canvas rendering, live seeking */
 function DesktopVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [posterVisible, setPosterVisible] = useState(true);
@@ -78,28 +52,25 @@ function DesktopVideoBackground() {
     video.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;width:1px;height:1px";
     document.body.appendChild(video);
 
-    const dpr = 1;
     let canvasW = 0;
     let canvasH = 0;
 
     const setCanvasSize = () => {
       canvasW = container.clientWidth;
       canvasH = container.clientHeight;
-      canvas.width = canvasW * dpr;
-      canvas.height = canvasH * dpr;
+      canvas.width = canvasW;
+      canvas.height = canvasH;
       canvas.style.width = `${canvasW}px`;
       canvas.style.height = `${canvasH}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setCanvasSize();
 
     const rawScroll = { current: 0 };
     const smoothScroll = { current: 0 };
-    const frames: ImageBitmap[] = [];
-    let scrubEnabled = false;
+    let isSeeking = false;
+    let decoderActive = false;
     let running = true;
     let rafId: number;
-    let aborted = false;
 
     const onScroll = () => {
       const docHeight = container.scrollHeight - container.clientHeight;
@@ -107,80 +78,74 @@ function DesktopVideoBackground() {
     };
     container.addEventListener("scroll", onScroll, { passive: true });
 
-    const onResize = () => { setCanvasSize(); };
-    window.addEventListener("resize", onResize);
+    const onSeeked = () => {
+      isSeeking = false;
+      drawFrame(video, ctx, canvasW, canvasH);
+    };
+    video.addEventListener("seeked", onSeeked);
 
-    const FRAME_COUNT = 120;
-
+    // Slower lerp than mobile for a more cinematic desktop feel
     const loop = () => {
       if (!running) return;
-      const lerp = 0.08;
-      smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
-      if (scrubEnabled && frames.length > 0) {
-        const idx = Math.round(smoothScroll.current * (FRAME_COUNT - 1));
-        const bitmap = frames[Math.min(idx, frames.length - 1)];
-        if (bitmap) drawBitmap(bitmap, ctx, canvasW, canvasH);
-      }
-      rafId = requestAnimationFrame(loop);
-    };
-
-    const captureFrames = async () => {
-      if (!video.duration || !isFinite(video.duration)) return;
-      const captureW = Math.min(Math.round(container.clientWidth), 960);
-      const captureH = Math.round(captureW / (video.videoWidth / video.videoHeight));
-
-      for (let i = 0; i < FRAME_COUNT; i++) {
-        if (aborted) break;
-        const t = (i / (FRAME_COUNT - 1)) * video.duration;
-        await seekTo(video, t);
-        if (aborted) break;
-        try {
-          const bitmap = await createImageBitmap(video, { resizeWidth: captureW, resizeHeight: captureH });
-          frames.push(bitmap);
-        } catch {
-          const bitmap = await createImageBitmap(video);
-          frames.push(bitmap);
+      smoothScroll.current = smoothScroll.current * 0.95 + rawScroll.current * 0.05;
+      if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
+        const targetTime = video.duration * smoothScroll.current;
+        if (Math.abs(video.currentTime - targetTime) > 0.02) {
+          isSeeking = true;
+          video.currentTime = targetTime;
         }
       }
-
-      // Only enable scrubbing after ALL frames are captured — avoids partial-video bug
-      if (!aborted) {
-        setPosterVisible(false);
-        scrubEnabled = true;
-      }
-    };
-
-    const startCapture = () => {
-      onScroll();
-      smoothScroll.current = rawScroll.current;
       rafId = requestAnimationFrame(loop);
-      captureFrames();
     };
 
-    const onCanPlayThrough = () => startCapture();
     const onProgress = () => {
-      if (video.duration && isBufferedAt(video, 0.5)) {
+      if (!video.duration) return;
+      if (isBufferedAt(video, 0.1)) {
+        setPosterVisible(false);
+        drawFrame(video, ctx, canvasW, canvasH);
         video.removeEventListener("progress", onProgress);
-        startCapture();
       }
     };
-
-    video.addEventListener("canplaythrough", onCanPlayThrough, { once: true });
+    const onCanPlay = () => {
+      setPosterVisible(false);
+      drawFrame(video, ctx, canvasW, canvasH);
+    };
     video.addEventListener("progress", onProgress);
+    video.addEventListener("canplaythrough", onCanPlay, { once: true });
+
+    // Warm the decoder on first gesture so seeks are instant
+    const activateDecoder = () => {
+      if (decoderActive) return;
+      const p = video.play();
+      if (p !== undefined) {
+        p.then(() => { video.playbackRate = 0; decoderActive = true; })
+         .catch(() => { decoderActive = true; });
+      } else {
+        video.playbackRate = 0;
+        decoderActive = true;
+      }
+    };
+    container.addEventListener("wheel", activateDecoder, { once: true, passive: true });
+    container.addEventListener("click", activateDecoder, { once: true });
+
+    onScroll();
+    smoothScroll.current = rawScroll.current;
+    rafId = requestAnimationFrame(loop);
+
+    const onResize = () => { setCanvasSize(); drawFrame(video, ctx, canvasW, canvasH); };
+    window.addEventListener("resize", onResize);
 
     return () => {
-      aborted = true;
       running = false;
       cancelAnimationFrame(rafId);
       container.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
+      video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onProgress);
-      video.removeEventListener("canplaythrough", onCanPlayThrough);
       if (video.parentNode) video.parentNode.removeChild(video);
       video.pause();
       video.src = "";
       video.load();
-      frames.forEach((b) => b.close());
     };
   }, [scrollContainer]);
 
@@ -194,7 +159,7 @@ function DesktopVideoBackground() {
   );
 }
 
-/* Mobile: canvas + visible video element */
+/* Mobile: canvas + visible video element (unchanged) */
 function MobileVideoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -209,18 +174,16 @@ function MobileVideoBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const dpr = 1;
     let canvasW = 0;
     let canvasH = 0;
 
     const setCanvasSize = () => {
       canvasW = container.clientWidth;
       canvasH = container.clientHeight;
-      canvas.width = canvasW * dpr;
-      canvas.height = canvasH * dpr;
+      canvas.width = canvasW;
+      canvas.height = canvasH;
       canvas.style.width = `${canvasW}px`;
       canvas.style.height = `${canvasH}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setCanvasSize();
 
@@ -245,8 +208,7 @@ function MobileVideoBackground() {
 
     const loop = () => {
       if (!running) return;
-      const lerp = 0.08;
-      smoothScroll.current = smoothScroll.current * (1 - lerp) + rawScroll.current * lerp;
+      smoothScroll.current = smoothScroll.current * 0.92 + rawScroll.current * 0.08;
       if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
         const targetTime = video.duration * smoothScroll.current;
         if (Math.abs(video.currentTime - targetTime) > 0.02) {
