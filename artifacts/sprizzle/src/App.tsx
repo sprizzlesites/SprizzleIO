@@ -54,7 +54,7 @@ function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
         snapActive = true;
         gsap.to(c, {
           scrollTo: { y: targetY },
-          duration: 0.5,
+          duration: 0.28,
           ease: "power2.out",
           onComplete: () => { snapActive = false; },
         });
