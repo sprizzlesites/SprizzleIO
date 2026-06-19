@@ -67,10 +67,13 @@ function DesktopVideoBackground() {
 
     const rawScroll = { current: 0 };
     const smoothScroll = { current: 0 };
-    let isSeeking = false;
     let decoderActive = false;
     let running = true;
     let rafId: number;
+    let rvfcHandle: number | undefined;
+    let isSeeking = false;
+    let stallTimer: ReturnType<typeof setTimeout> | undefined;
+    let onSeeked: (() => void) | undefined;
 
     const onScroll = () => {
       const docHeight = container.scrollHeight - container.clientHeight;
@@ -78,25 +81,54 @@ function DesktopVideoBackground() {
     };
     container.addEventListener("scroll", onScroll, { passive: true });
 
-    const onSeeked = () => {
-      isSeeking = false;
-      drawFrame(video, ctx, canvasW, canvasH);
-    };
-    video.addEventListener("seeked", onSeeked);
+    const useRVFC = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
 
-    // Slower lerp than mobile for a more cinematic desktop feel
-    const loop = () => {
-      if (!running) return;
-      smoothScroll.current = smoothScroll.current * 0.6 + rawScroll.current * 0.4;
-      if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
-        const targetTime = video.duration * smoothScroll.current;
-        if (Math.abs(video.currentTime - targetTime) > 0.02) {
-          isSeeking = true;
-          video.currentTime = targetTime;
+    if (useRVFC) {
+      // Primary path (Chrome/Safari/Edge): chain seeks through requestVideoFrameCallback
+      // so the canvas only advances after the decoder has actually rendered the new frame —
+      // no jumps even on slow hardware.
+      const tick = () => {
+        if (!running) return;
+        smoothScroll.current = smoothScroll.current * 0.8 + rawScroll.current * 0.2;
+        if (decoderActive && video.duration && isFinite(video.duration)) {
+          const targetTime = video.duration * smoothScroll.current;
+          if (Math.abs(video.currentTime - targetTime) > 0.02) {
+            rvfcHandle = (video as any).requestVideoFrameCallback(() => {
+              drawFrame(video, ctx, canvasW, canvasH);
+              rafId = requestAnimationFrame(tick);
+            });
+            video.currentTime = targetTime;
+            return; // wait for frame before next tick
+          }
         }
-      }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    } else {
+      // Fallback path (Firefox): seeked event + 100ms stall timeout so a slow
+      // decoder can't freeze the loop indefinitely.
+      onSeeked = () => {
+        if (stallTimer !== undefined) clearTimeout(stallTimer);
+        isSeeking = false;
+        drawFrame(video, ctx, canvasW, canvasH);
+      };
+      video.addEventListener("seeked", onSeeked);
+
+      const loop = () => {
+        if (!running) return;
+        smoothScroll.current = smoothScroll.current * 0.8 + rawScroll.current * 0.2;
+        if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
+          const targetTime = video.duration * smoothScroll.current;
+          if (Math.abs(video.currentTime - targetTime) > 0.02) {
+            isSeeking = true;
+            stallTimer = setTimeout(() => { isSeeking = false; }, 100);
+            video.currentTime = targetTime;
+          }
+        }
+        rafId = requestAnimationFrame(loop);
+      };
       rafId = requestAnimationFrame(loop);
-    };
+    }
 
     const onProgress = () => {
       if (!video.duration) return;
@@ -113,7 +145,6 @@ function DesktopVideoBackground() {
     video.addEventListener("progress", onProgress);
     video.addEventListener("canplaythrough", onCanPlay, { once: true });
 
-    // Warm the decoder on first gesture so seeks are instant
     const activateDecoder = () => {
       if (decoderActive) return;
       const p = video.play();
@@ -130,7 +161,6 @@ function DesktopVideoBackground() {
 
     onScroll();
     smoothScroll.current = rawScroll.current;
-    rafId = requestAnimationFrame(loop);
 
     const onResize = () => { setCanvasSize(); drawFrame(video, ctx, canvasW, canvasH); };
     window.addEventListener("resize", onResize);
@@ -138,9 +168,11 @@ function DesktopVideoBackground() {
     return () => {
       running = false;
       cancelAnimationFrame(rafId);
+      if (rvfcHandle !== undefined) (video as any).cancelVideoFrameCallback(rvfcHandle);
+      if (stallTimer !== undefined) clearTimeout(stallTimer);
       container.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      video.removeEventListener("seeked", onSeeked);
+      if (onSeeked) video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onProgress);
       if (video.parentNode) video.parentNode.removeChild(video);
       video.pause();
