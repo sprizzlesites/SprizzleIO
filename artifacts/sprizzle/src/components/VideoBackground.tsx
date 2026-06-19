@@ -46,6 +46,7 @@ function DesktopVideoBackground() {
     const smoothScroll = { current: 0 };
     const prevRaw = { current: 0 };
     let isSeeking = false;
+    let snapMode = false;
     let stallTimer: ReturnType<typeof setTimeout> | undefined;
     let decoderActive = false;
     let running = true;
@@ -56,6 +57,11 @@ function DesktopVideoBackground() {
       rawScroll.current = container.scrollTop / Math.max(docHeight, 1);
     };
     container.addEventListener("scroll", onScroll, { passive: true });
+
+    const onSnapStart = () => { snapMode = true; };
+    const onSnapEnd = () => { snapMode = false; };
+    container.addEventListener("snap-start", onSnapStart);
+    container.addEventListener("snap-end", onSnapEnd);
 
     const onSeeked = () => {
       if (stallTimer !== undefined) clearTimeout(stallTimer);
@@ -70,23 +76,30 @@ function DesktopVideoBackground() {
       prevRaw.current = rawScroll.current;
       smoothScroll.current = smoothScroll.current * 0.6 + rawScroll.current * 0.4;
 
-      if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
+      if (decoderActive && video.duration && isFinite(video.duration)) {
         const targetTime = video.duration * smoothScroll.current;
-        let seekTarget = targetTime;
 
-        if (rawDelta < 0.008) {
-          // Manual scroll: step at most one video frame toward target
-          const maxStep = video.duration / 30;
-          const diff = targetTime - video.currentTime;
-          if (Math.abs(diff) > maxStep) {
-            seekTarget = video.currentTime + Math.sign(diff) * maxStep;
+        if (snapMode) {
+          // During snap: update every RAF frame without isSeeking gate so slow
+          // decoders still show each decoded frame rather than a single jump
+          if (Math.abs(video.currentTime - targetTime) > 0.01) {
+            video.currentTime = targetTime;
           }
-        }
-
-        if (Math.abs(video.currentTime - seekTarget) > 0.02) {
-          isSeeking = true;
-          stallTimer = setTimeout(() => { isSeeking = false; }, 80);
-          video.currentTime = seekTarget;
+        } else if (!isSeeking) {
+          // Manual scroll: step at most one video frame toward target
+          let seekTarget = targetTime;
+          if (rawDelta < 0.008) {
+            const maxStep = video.duration / 30;
+            const diff = targetTime - video.currentTime;
+            if (Math.abs(diff) > maxStep) {
+              seekTarget = video.currentTime + Math.sign(diff) * maxStep;
+            }
+          }
+          if (Math.abs(video.currentTime - seekTarget) > 0.02) {
+            isSeeking = true;
+            stallTimer = setTimeout(() => { isSeeking = false; }, 80);
+            video.currentTime = seekTarget;
+          }
         }
       }
       rafId = requestAnimationFrame(loop);
@@ -126,6 +139,8 @@ function DesktopVideoBackground() {
       cancelAnimationFrame(rafId);
       if (stallTimer !== undefined) clearTimeout(stallTimer);
       container.removeEventListener("scroll", onScroll);
+      container.removeEventListener("snap-start", onSnapStart);
+      container.removeEventListener("snap-end", onSnapEnd);
       video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onProgress);
       video.pause();
