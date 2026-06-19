@@ -88,7 +88,7 @@ function DesktopVideoBackground() {
 
     const loop = () => {
       if (!running) return;
-      smoothScroll.current = smoothScroll.current * 0.75 + rawScroll.current * 0.25;
+      smoothScroll.current = smoothScroll.current * 0.6 + rawScroll.current * 0.4;
       if (decoderActive && video.duration && isFinite(video.duration) && !isSeeking) {
         const targetTime = video.duration * smoothScroll.current;
         if (Math.abs(video.currentTime - targetTime) > 0.02) {
