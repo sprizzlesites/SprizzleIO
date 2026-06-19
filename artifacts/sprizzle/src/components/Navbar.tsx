@@ -17,8 +17,8 @@ const sections: SectionLink[] = [
   { label: "Portal", pct: 0 },
   { label: "The Grid", pct: 25 },
   { label: "The Canvas", pct: 50 },
-  { label: "The Fortress", pct: 70 },
-  { label: "The Nexus", pct: 85 },
+  { label: "The Fortress", pct: 60 },
+  { label: "The Nexus", pct: 90 },
 ];
 
 export default function Navbar() {
