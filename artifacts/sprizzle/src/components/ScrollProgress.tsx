@@ -9,11 +9,11 @@ interface Zone {
 }
 
 const zones: Zone[] = [
-  { label: "Portal", start: 0, end: 17, color: "#cc55ff" },
-  { label: "The Grid", start: 17, end: 40, color: "#44ff88" },
-  { label: "The Canvas", start: 40, end: 58, color: "#ffaa33" },
-  { label: "The Fortress", start: 55, end: 80, color: "#ff3333" },
-  { label: "The Nexus", start: 78, end: 100, color: "#cc55ff" },
+  { label: "Portal", start: 0, end: 20, color: "#cc55ff" },
+  { label: "The Grid", start: 20, end: 45, color: "#44ff88" },
+  { label: "The Canvas", start: 45, end: 62, color: "#ffaa33" },
+  { label: "The Fortress", start: 60, end: 83, color: "#ff3333" },
+  { label: "The Nexus", start: 83, end: 100, color: "#cc55ff" },
 ];
 
 function getCurrentZone(pct: number): Zone | null {
