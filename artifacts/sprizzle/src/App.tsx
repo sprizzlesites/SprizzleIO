@@ -23,17 +23,10 @@ function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
     let scrollDir = 1;
     let snapActive = false;
 
-    const getSnapTarget = (currentPct: number, dir: number): number => {
-      if (dir > 0) {
-        // Scrolling down: nearest target at or ahead of current position
-        const next = SNAP_TARGETS.find((t) => t > currentPct + 1);
-        return next ?? SNAP_TARGETS[SNAP_TARGETS.length - 1];
-      } else {
-        // Scrolling up: nearest target at or behind current position
-        const prev = [...SNAP_TARGETS].reverse().find((t) => t < currentPct - 1);
-        return prev ?? SNAP_TARGETS[0];
-      }
-    };
+    const getSnapTarget = (currentPct: number): number =>
+      SNAP_TARGETS.reduce((best, t) =>
+        Math.abs(t - currentPct) < Math.abs(best - currentPct) ? t : best
+      );
 
     const onScroll = () => {
       const container = containerRef.current;
@@ -55,7 +48,7 @@ function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
         const scrollableH = c.scrollHeight - c.clientHeight;
         if (scrollableH <= 0) return;
         const currentPct = (c.scrollTop / scrollableH) * 100;
-        const targetPct = getSnapTarget(currentPct, scrollDir);
+        const targetPct = getSnapTarget(currentPct);
         const targetY = (targetPct / 100) * scrollableH;
 
         snapActive = true;
