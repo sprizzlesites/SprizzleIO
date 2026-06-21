@@ -2,8 +2,8 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { ScrollContext } from "../ScrollContext";
 
 const COLS = 10, ROWS = 10, N_FRAMES = 100;
-const FRAME_W_DESKTOP = 480, FRAME_H_DESKTOP = 270;
-const FRAME_W_MOBILE  = 240, FRAME_H_MOBILE  = 135;
+const FRAME_W_DESKTOP = 1280, FRAME_H_DESKTOP = 720;
+const FRAME_W_MOBILE  = 640,  FRAME_H_MOBILE  = 360;
 
 export default function VideoBackground() {
   const divRef = useRef<HTMLDivElement>(null);
@@ -19,8 +19,8 @@ export default function VideoBackground() {
     const frameW = isMobile ? FRAME_W_MOBILE : FRAME_W_DESKTOP;
     const frameH = isMobile ? FRAME_H_MOBILE : FRAME_H_DESKTOP;
     const src = isMobile
-      ? `${import.meta.env.BASE_URL}sprite-mobile.jpg`
-      : `${import.meta.env.BASE_URL}sprite-desktop.jpg`;
+      ? `${import.meta.env.BASE_URL}sprite-mobile.webp`
+      : `${import.meta.env.BASE_URL}sprite-desktop.webp`;
 
     let displayCellW = 0;
     let displayCellH = 0;
