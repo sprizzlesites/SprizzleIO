@@ -52,13 +52,12 @@ function useScrollSnap(containerRef: React.RefObject<HTMLDivElement | null>) {
         const targetY = (targetPct / 100) * scrollableH;
 
         gsapScrolling = true;
-        c.dispatchEvent(new CustomEvent('snap-start'));
         gsap.to(c, {
           scrollTo: { y: targetY },
           duration: 0.28,
           ease: "power2.out",
-          onComplete: () => { gsapScrolling = false; c.dispatchEvent(new CustomEvent('snap-end')); },
-          onInterrupt: () => { gsapScrolling = false; c.dispatchEvent(new CustomEvent('snap-end')); },
+          onComplete: () => { gsapScrolling = false; },
+          onInterrupt: () => { gsapScrolling = false; },
         });
       }, SNAP_DELAY_MS);
     };
